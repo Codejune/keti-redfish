@@ -1,4 +1,3 @@
-#include "stdafx.hpp"
 #include "handler.hpp"
 #include "resource.hpp"
 
@@ -15,24 +14,26 @@ void resource_init(void)
     service_root->id = "RootService";
     service_root->name = "Root Service";
     service_root->redfish_version = "1.0.0";
-    service_root->save_json();
 
     Collection *systems = new Collection("/redfish/v1/Systems", ODATA_SYSTEM_COLLECTION_TYPE);
-    service_root->system_collection = systems;
     systems->name = "Computer System Collection";
 
     Collection *chassis = new Collection("/redfish/v1/Chassis", ODATA_CHASSIS_COLLECTION_TYPE);
-    service_root->chassis_collection = chassis;
     chassis->name = "Chassis Collection";
 
     Collection *managers = new Collection("/redfish/v1/Managers", ODATA_MANAGER_COLLECTION_TYPE);
-    service_root->manager_collection = managers;
     managers->name = "Manager Collection";
+
+    service_root->system_collection = systems;
+    service_root->chassis_collection = chassis;
+    service_root->manager_collection = managers;
 
     g_record["/redfish/v1/Systems"] = systems;
     g_record["/redfish/v1/Chassis"] = chassis;
     g_record["/redfish/v1/Managers"] = managers;
     g_record[REDFISH_ROOT_PATH] = service_root;
+    // record_load_json();
+    record_save_json();
 }
 
 /**

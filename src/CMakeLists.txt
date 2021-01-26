@@ -10,6 +10,7 @@ set(
     main.cpp 
     handler.cpp
     resource.cpp
+    util.cpp
 )
 
 # Directory setting

@@ -10,15 +10,6 @@
 #include <fstream>
 #include <cpprest/http_listener.h>
 #include <cpprest/json.h>
-
-
-using namespace std;
-using namespace web;
-using namespace web::http;
-using namespace web::http::experimental::listener;
-using namespace utility;
-
-// Logging
 #include <boost/log/core.hpp>
 #include <boost/log/trivial.hpp>
 #include <boost/log/expressions.hpp>
@@ -27,11 +18,23 @@ using namespace utility;
 #include <boost/log/utility/setup/common_attributes.hpp>
 #include <boost/log/sources/severity_logger.hpp>
 #include <boost/log/sources/record_ostream.hpp>
+#include <unistd.h>
+#include <dirent.h>
+
+
+using namespace std;
+using namespace web;
+using namespace web::http;
+using namespace web::http::experimental::listener;
+using namespace utility;
 
 namespace logging = boost::log;
 namespace src = boost::log::sources;
 namespace sinks = boost::log::sinks;
 namespace keywords = boost::log::keywords;
 
+using namespace logging::trivial;
+
+vector<string> string_split(const string _string, char _delimiter);
 
 #endif

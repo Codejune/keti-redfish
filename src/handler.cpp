@@ -1,4 +1,3 @@
-#include "stdafx.hpp"
 #include "handler.hpp"
 #include "resource.hpp"
 

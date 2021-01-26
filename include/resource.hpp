@@ -3,10 +3,18 @@
 
 #include "stdafx.hpp"
 
+/**
+ * @brief Redfish information
+ * 
+ */
 #define REDFISH_VERSION "v1"
 #define REDFISH_ROOT_PATH "/redfish/" REDFISH_VERSION
 #define ODATA_TYPE_VERSION REDFISH_VERSION "_0_0"
 
+/**
+ * @brief Open data information
+ * 
+ */
 #define ODATA_RESOURCE_TYPE "#Resource." ODATA_TYPE_VERSION ".Resource"
 #define ODATA_SERVICE_ROOT_TYPE "#ServiceRoot." ODATA_TYPE_VERSION ".ServiceRoot"
 #define ODATA_COLLECTION_TYPE "#Collection.Collection"
@@ -21,6 +29,7 @@
 #define ODATA_CHASSIS_COLLECTION_TYPE "#ChassisCollection.ChassisCollection"
 #define ODATA_CHASSIS_TYPE "#Chassis." ODATA_TYPE_VERSION ".Chassis"
 #define ODATA_THERMAL_TYPE "#Thermal." ODATA_TYPE_VERSION ".Thermal"
+#define ODATA_POWER_TYPE "#Power." ODATA_TYPE_VERSION ".Power"
 
 #define ODATA_MANAGER_COLLECTION_TYPE "#ManagerCollection.ManagerCollection"
 #define ODATA_MANAGER_TYPE "#Manager." ODATA_TYPE_VERSION ".Manager"
@@ -47,6 +56,10 @@
 #define ODATA_DESTINATION_COLLECTION_TYPE "#EventDestinationCollection.EventDestinationCollection"
 #define ODATA_DESTINATION_TYPE "#EventDestination." ODATA_TYPE_VERSION ".EventDestination"
 
+/**
+ * @brief Resource type for casting
+ * 
+ */
 enum RESOURCE_TYPE
 {
     SUPER_TYPE,
@@ -57,6 +70,7 @@ enum RESOURCE_TYPE
     SIMPLE_STORAGE_TYPE,
     CHASSIS_TYPE,
     THERMAL_TYPE,
+    POWER_TYPE,
     MANAGER_TYPE,
     ETHERNET_INTERFACE_TYPE,
     LOG_SERVICE_TYPE,
@@ -90,13 +104,6 @@ public:
     uint8_t type;
 
     // Class constructor, destructor oveloading
-    Resource()
-    {
-        this->name = "";
-        this->type = SUPER_TYPE;
-        this->odata.id = "";
-        this->odata.type = ODATA_RESOURCE_TYPE;
-    };
     Resource(const uint8_t _type, const string _odata_id, const string _odata_type)
     {
         this->name = "";
@@ -121,15 +128,12 @@ public:
     vector<Resource *> members;
 
     // Class constructor, destructor oveloading
-    Collection() : Resource()
-    {
-        this->type = COLLECTION_TYPE;
-    };
     Collection(const string _odata_id, const string _odata_type) : Resource(COLLECTION_TYPE, _odata_id, _odata_type){};
     ~Collection(){};
 
     void add_member(Resource *);
     json::value get_json(void);
+    bool load_json(void);
 };
 
 /**
@@ -159,9 +163,12 @@ public:
     ~ServiceRoot(){};
 
     json::value get_json(void);
+    bool load_json(void);
 };
 
 bool record_is_exist(const string _uri);
 json::value record_get_json(const string _uri);
+bool record_load_json(void);
+bool record_save_json(void);
 
 #endif

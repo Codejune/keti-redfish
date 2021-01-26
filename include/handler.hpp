@@ -2,8 +2,6 @@
 #define HANDLER_H
 #include "stdafx.hpp"
 
-using namespace logging::trivial;
-
 class Handler
 {
 public:
