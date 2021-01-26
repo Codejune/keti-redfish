@@ -109,6 +109,7 @@ public:
     json::value get_json(void);
     json::value get_odata_id_json(void);
     bool save_json(void);
+    bool load_json(void);
 };
 
 /**

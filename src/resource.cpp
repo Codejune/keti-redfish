@@ -54,6 +54,33 @@ bool Resource::save_json(void)
     return true;
 }
 
+bool Resource::load_json(void)
+{
+    json::value j; // JSON read from input file
+
+    try
+    {
+        // Open the file stream
+        ifstream target_file(this->odata.id);
+
+        // String stream for holding the JSON file
+        stringstream string_stream;
+
+        // Stream file stream into string stream
+        string_stream << target_file.rdbuf();
+        target_file.close(); // Close the filestream
+
+        // Parse the string stream into a JSON object
+        j = json::value::parse(strStream);
+    }
+    catch (json::json_exception excep)
+    {
+        throw json::json_exception("Error Parsing JSON file " + this->odata.id);
+    }
+
+    return output;
+}
+
 json::value ServiceRoot::get_json(void)
 {
     auto j = this->Resource::get_json();

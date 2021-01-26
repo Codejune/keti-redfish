@@ -1,5 +1,0 @@
-/root/CMM_SDK/source/keti-redfish/CMakeFiles/rebuild_cache.dir
-/root/CMM_SDK/source/keti-redfish/CMakeFiles/edit_cache.dir
-/root/CMM_SDK/source/keti-redfish/src/CMakeFiles/rebuild_cache.dir
-/root/CMM_SDK/source/keti-redfish/src/CMakeFiles/edit_cache.dir
-/root/CMM_SDK/source/keti-redfish/src/CMakeFiles/keti-redfish.dir

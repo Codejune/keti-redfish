@@ -15,8 +15,8 @@
 using namespace std;
 using namespace web;
 using namespace web::http;
-using namespace utility;
 using namespace web::http::experimental::listener;
+using namespace utility;
 
 // Logging
 #include <boost/log/core.hpp>
