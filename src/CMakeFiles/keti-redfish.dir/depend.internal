@@ -4195,6 +4195,7 @@ src/CMakeFiles/keti-redfish.dir/main.cpp.o
  /root/CMM_SDK/output/build/boost-1.74.0/boost/winapi/wait_constants.hpp
  /root/CMM_SDK/source/keti-redfish/src/main.cpp
  include/handler.hpp
+ include/resource.hpp
  include/stdafx.hpp
 src/CMakeFiles/keti-redfish.dir/resource.cpp.o
  /root/CMM_SDK/output/build/boost-1.74.0/boost/array.hpp

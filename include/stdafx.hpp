@@ -6,6 +6,8 @@
 #include <cstdlib>
 #include <memory>
 #include <vector>
+#include <unordered_map>
+#include <fstream>
 #include <cpprest/http_listener.h>
 #include <cpprest/json.h>
 

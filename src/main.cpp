@@ -1,21 +1,38 @@
 #include "stdafx.hpp"
 #include "handler.hpp"
+#include "resource.hpp"
 
 unique_ptr<Handler> listener;
 src::severity_logger<severity_level> lg;
+unordered_map<string, Resource*> g_record;
 
-void init()
+/**
+ * @brief Resource initialization
+ */
+void resource_init(void)
 {
-    // logging::add_file_log(
-    //     keywords::file_name = "keti-redfish_%N.log",                                  // Log file name format
-    //     keywords::rotation_size = 10 * 1024 * 1024,                                   // Log file re-creation size of 10MB
-    //     keywords::time_based_rotation = sinks::file::rotation_at_time_point(0, 0, 0), // Log file re-creation time of day
-    //     keywords::format = "[%TimeStamp%]: %Message%"
-    //     // keywords::format = "[%TimeStamp%] [%ThreadID%] [%Severity%] [%ProcessID%] [%LineID%] %Message%" // Log file record format
-    // );
+    ServiceRoot *service_root = new ServiceRoot();
+    service_root->id = "RootService";
+    service_root->name = "Root Service";
+    service_root->redfish_version = "1.0.0";
+    service_root->save_json();
 
-    // logging::core::get()->set_filter(
-    //     logging::trivial::severity >= logging::trivial::info);
+    Collection *systems = new Collection("/redfish/v1/Systems", ODATA_SYSTEM_COLLECTION_TYPE);
+    service_root->system_collection = systems;
+    systems->name = "Computer System Collection";
+
+    Collection *chassis = new Collection("/redfish/v1/Chassis", ODATA_CHASSIS_COLLECTION_TYPE);
+    service_root->chassis_collection = chassis;
+    chassis->name = "Chassis Collection";
+
+    Collection *managers = new Collection("/redfish/v1/Managers", ODATA_MANAGER_COLLECTION_TYPE);
+    service_root->manager_collection = managers;
+    managers->name = "Manager Collection";
+
+    g_record["/redfish/v1/Systems"] = systems;
+    g_record["/redfish/v1/Chassis"] = chassis;
+    g_record["/redfish/v1/Managers"] = managers;
+    g_record[REDFISH_ROOT_PATH] = service_root;
 }
 
 /**
@@ -41,8 +58,8 @@ void start_server(utility::string_t &url, http_listener_config config)
 int main(int argc, char *argv[])
 {
 
-    // Logging
-    init();
+    // Initialization
+    resource_init();
     
     // logging::add_common_attributes();
 

@@ -24450,11 +24450,31 @@ boost/winapi/detail/header.hpp
 boost/winapi/detail/footer.hpp
 -
 
+/root/CMM_SDK/source/keti-redfish/src/handler.cpp
+stdafx.hpp
+/root/CMM_SDK/source/keti-redfish/src/stdafx.hpp
+handler.hpp
+/root/CMM_SDK/source/keti-redfish/src/handler.hpp
+resource.hpp
+/root/CMM_SDK/source/keti-redfish/src/resource.hpp
+
+/root/CMM_SDK/source/keti-redfish/src/main.cpp
+stdafx.hpp
+/root/CMM_SDK/source/keti-redfish/src/stdafx.hpp
+handler.hpp
+/root/CMM_SDK/source/keti-redfish/src/handler.hpp
+resource.hpp
+/root/CMM_SDK/source/keti-redfish/src/resource.hpp
+
 /root/CMM_SDK/source/keti-redfish/src/resource.cpp
 stdafx.hpp
 /root/CMM_SDK/source/keti-redfish/src/stdafx.hpp
 resource.hpp
 /root/CMM_SDK/source/keti-redfish/src/resource.hpp
+
+include/handler.hpp
+stdafx.hpp
+include/stdafx.hpp
 
 include/resource.hpp
 stdafx.hpp
@@ -24470,6 +24490,10 @@ cstdlib
 memory
 -
 vector
+-
+unordered_map
+-
+fstream
 -
 cpprest/http_listener.h
 -
