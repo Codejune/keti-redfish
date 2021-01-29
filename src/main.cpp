@@ -3,35 +3,17 @@
 
 unique_ptr<Handler> listener;
 src::severity_logger<severity_level> lg;
-unordered_map<string, Resource*> g_record;
+unordered_map<string, Resource *> g_record;
 
 /**
  * @brief Resource initialization
  */
 void resource_init(void)
 {
+    BOOST_LOG_SEV(lg, info) << "Redfish resource initializing...";
+
     ServiceRoot *service_root = new ServiceRoot();
-    service_root->id = "RootService";
-    service_root->name = "Root Service";
-    service_root->redfish_version = "1.0.0";
 
-    Collection *systems = new Collection("/redfish/v1/Systems", ODATA_SYSTEM_COLLECTION_TYPE);
-    systems->name = "Computer System Collection";
-
-    Collection *chassis = new Collection("/redfish/v1/Chassis", ODATA_CHASSIS_COLLECTION_TYPE);
-    chassis->name = "Chassis Collection";
-
-    Collection *managers = new Collection("/redfish/v1/Managers", ODATA_MANAGER_COLLECTION_TYPE);
-    managers->name = "Manager Collection";
-
-    service_root->system_collection = systems;
-    service_root->chassis_collection = chassis;
-    service_root->manager_collection = managers;
-
-    g_record["/redfish/v1/Systems"] = systems;
-    g_record["/redfish/v1/Chassis"] = chassis;
-    g_record["/redfish/v1/Managers"] = managers;
-    g_record[REDFISH_ROOT_PATH] = service_root;
     // record_load_json();
     record_save_json();
 }
@@ -59,17 +41,10 @@ void start_server(utility::string_t &url, http_listener_config config)
 int main(int argc, char *argv[])
 {
 
+
+
     // Initialization
     resource_init();
-    
-    // logging::add_common_attributes();
-
-    // BOOST_LOG_SEV(lg, trace) << "A trace severity message";
-    // BOOST_LOG_SEV(lg, debug) << "A debug severity message";
-    // BOOST_LOG_SEV(lg, info) << "An informational severity message";
-    // BOOST_LOG_SEV(lg, warning) << "A warning severity message";
-    // BOOST_LOG_SEV(lg, error) << "An error severity message";
-    // BOOST_LOG_SEV(lg, fatal) << "A fatal severity message";
 
     http_listener_config listen_config;
     listen_config.set_ssl_context_callback([](boost::asio::ssl::context &ctx) {
@@ -86,16 +61,17 @@ int main(int argc, char *argv[])
         //    return "password";
         // });
 
-        ctx.use_certificate_chain_file("rootca.crt");
-        ctx.use_private_key_file("rootca.key", boost::asio::ssl::context::pem);
-        ctx.use_tmp_dh_file("dh2048.pem");
+        ctx.use_certificate_chain_file("/conf/ssl/rootca.crt");
+        ctx.use_private_key_file("/conf/ssl/rootca.key", boost::asio::ssl::context::pem);
+        ctx.use_tmp_dh_file("/conf/ssl/dh2048.pem");
     });
 
     listen_config.set_timeout(utility::seconds(10));
     utility::string_t url = U("https://0.0.0.0:80");
 
     start_server(url, listen_config);
-    while (true) {
+    while (true)
+    {
         // TODO 리소스 업데이트 관련 구현 필요
     }
     listener->close().wait();

@@ -21,7 +21,6 @@
 #include <unistd.h>
 #include <dirent.h>
 
-
 using namespace std;
 using namespace web;
 using namespace web::http;
@@ -36,5 +35,5 @@ namespace keywords = boost::log::keywords;
 using namespace logging::trivial;
 
 vector<string> string_split(const string _string, char _delimiter);
-
+string make_path(vector<string> tokens);
 #endif

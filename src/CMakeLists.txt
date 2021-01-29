@@ -11,6 +11,8 @@ set(
     handler.cpp
     resource.cpp
     util.cpp
+    record.cpp
+    auth.cpp
 )
 
 # Directory setting
@@ -33,6 +35,8 @@ target_link_libraries(
     ${OUTPUT} 
     crypto 
     ssl 
+    pam
+    pam_misc
     cpprest 
     pthread 
     boost_system 

@@ -3,136 +3,7 @@
 extern unordered_map<string, Resource *> g_record;
 extern src::severity_logger<severity_level> lg;
 
-/**
- * @brief Find uri in to record(unordered_map)
- * 
- * @param _uri Open data id of resource
- * @return true 
- * @return false 
- */
-bool record_is_exist(const string _uri)
-{
-    if (g_record.find(_uri) == g_record.end())
-        return false;
-    return true;
-}
-
-json::value record_get_json(const string _uri)
-{
-    json::value j;
-
-    switch (g_record[_uri]->type)
-    {
-    case SERVICE_ROOT_TYPE:
-        j = ((ServiceRoot *)g_record[_uri])->get_json();
-        break;
-    case COLLECTION_TYPE:
-        j = ((Collection *)g_record[_uri])->get_json();
-        break;
-    case SYSTEM_TYPE:
-        break;
-    case PROCESSOR_TYPE:
-        break;
-    case SIMPLE_STORAGE_TYPE:
-        break;
-    case CHASSIS_TYPE:
-        break;
-    case THERMAL_TYPE:
-        break;
-    case POWER_TYPE:
-        break;
-    case MANAGER_TYPE:
-        break;
-    case ETHERNET_INTERFACE_TYPE:
-        break;
-    case LOG_SERVICE_TYPE:
-        break;
-    case LOG_ENTRY_TYPE:
-        break;
-    case TASK_SERVICE_TYPE:
-        break;
-    case SESSION_SERVICE_TYPE:
-        break;
-    case SESSION_TYPE:
-        break;
-    case ACCOUNT_SERVICE_TYPE:
-        break;
-    case ROLE_TYPE:
-        break;
-    case EVENT_SERVICE_TYPE:
-        break;
-    case DESTINATION_TYPE:
-        break;
-    default:
-        break;
-    }
-    return j;
-}
-
-/**
- * @brief Load json file and assign to target resource
- * 
- * @return true 
- * @return false 
- */
-bool record_load_json(void)
-{
-    for (auto it = g_record.begin(); it != g_record.end(); it++)
-        switch (it->second->type)
-        {
-        case SERVICE_ROOT_TYPE:
-            ((ServiceRoot *)it->second)->load_json();
-            break;
-        case COLLECTION_TYPE:
-            ((Collection *)it->second)->load_json();
-            break;
-        case SYSTEM_TYPE:
-            break;
-        case PROCESSOR_TYPE:
-            break;
-        case SIMPLE_STORAGE_TYPE:
-            break;
-        case CHASSIS_TYPE:
-            break;
-        case THERMAL_TYPE:
-            break;
-        case POWER_TYPE:
-            break;
-        case MANAGER_TYPE:
-            break;
-        case ETHERNET_INTERFACE_TYPE:
-            break;
-        case LOG_SERVICE_TYPE:
-            break;
-        case LOG_ENTRY_TYPE:
-            break;
-        case TASK_SERVICE_TYPE:
-            break;
-        case SESSION_SERVICE_TYPE:
-            break;
-        case SESSION_TYPE:
-            break;
-        case ACCOUNT_SERVICE_TYPE:
-            break;
-        case ROLE_TYPE:
-            break;
-        case EVENT_SERVICE_TYPE:
-            break;
-        case DESTINATION_TYPE:
-            break;
-        default:
-            break;
-        }
-    return true;
-}
-
-bool record_save_json(void)
-{
-    for (auto it = g_record.begin(); it != g_record.end(); it++)
-        it->second->save_json();
-    return true;
-}
-
+// Resource start
 json::value Resource::get_json(void)
 {
     json::value j;
@@ -156,9 +27,12 @@ bool Resource::save_json(void)
     // Make all of sub directories
     vector<string> tokens = string_split(this->odata.id, '/');
     string sub_path = "/";
-    for (unsigned int i = 1; i < tokens.size() - 1; i++)
+    for (unsigned int i = 0; i < tokens.size() - 1; i++)
     {
-        sub_path = sub_path + '/' + tokens[i];
+        if (i == 0)
+            sub_path = sub_path + tokens[i];
+        else
+            sub_path = sub_path + '/' + tokens[i];
         mkdir(sub_path.c_str(), 0755);
     }
 
@@ -190,10 +64,12 @@ bool Resource::load_json(void)
         return false;
     }
 
-    this->name = j[U("Name")].serialize();
+    this->name = j.at("Name").as_string();
     return true;
 }
+// Resource end
 
+// ServiceRoot start
 json::value ServiceRoot::get_json(void)
 {
     auto j = this->Resource::get_json();
@@ -206,7 +82,7 @@ json::value ServiceRoot::get_json(void)
     j[U("Managers")] = this->manager_collection->get_odata_id_json();
     // j[U("Tasks")] = this->task->get_odata_id_json();
     // j[U("SessionService")] = this->session_service->get_odata_id_json();
-    // j[U("AccountService")] = this->account_service->get_odata_id_json();
+    j[U("AccountService")] = this->account_service->get_odata_id_json();
     // j[U("EventService")] = this->event_service->get_odata_id_json();
 
     return j;
@@ -232,13 +108,15 @@ bool ServiceRoot::load_json(void)
         return false;
     }
 
-    this->name = j[U("Name")].serialize();
-    this->id = j[U("Id")].serialize();
-    this->redfish_version = j[U("RedfishVersion")].serialize();
-    this->uuid = j[U("UUID")].serialize();
+    this->name = j.at("Name").as_string();
+    this->id = j.at("Id").as_string();
+    this->redfish_version = j.at("RedfishVersion").as_string();
+    this->uuid = j.at("UUID").as_string();
     return true;
 }
+// ServiceRoot end
 
+// Collection start
 json::value Collection::get_json(void)
 {
     auto j = this->Resource::get_json();
@@ -267,7 +145,7 @@ bool Collection::load_json(void)
         target_file.close();
 
         j = json::value::parse(string_stream);
-        this->name = j[U("Name")].serialize();
+        this->name = j.at("Name").as_string();
         BOOST_LOG_SEV(lg, info) << this->name;
     }
     catch (json::json_exception excep)
@@ -278,3 +156,58 @@ bool Collection::load_json(void)
 
     return true;
 }
+// Collection end
+
+// Account start
+json::value Account::get_json(void)
+{
+    auto j = this->Resource::get_json();
+
+    j[U("Id")] = json::value::string(U(this->id));
+    j[U("Enabled")] = json::value::boolean(U(this->enabled));
+    j[U("Password")] = json::value::string(U(this->password));
+    j[U("UserName")] = json::value::string(U(this->user_name));
+    j[U("RoleId")] = json::value::string(U(this->role_id));
+    j[U("Locked")] = json::value::boolean(U(this->locked));
+
+    return j;
+}
+// Account end
+
+// Role start
+json::value Role::get_json(void)
+{
+    auto j = this->Resource::get_json();
+
+    j[U("Id")] = json::value::string(U(this->id));
+    j[U("IsPredefined")] = json::value::boolean(U(this->is_predefined));
+
+    for (unsigned int i = 0; i < this->assigned_privileges.size(); i++)
+        j[U("AssignedPrivileges")][i] = json::value::string(U(this->assigned_privileges[i]));
+
+    return j;
+}
+// Role end
+
+// AccountService start
+json::value AccountService::get_json(void)
+{
+    auto j = this->Resource::get_json();
+    json::value k;
+
+    j[U("Id")] = json::value::string(U(this->id));
+    k[U("State")] = json::value::string(U(this->status.state));
+    k[U("Health")] = json::value::string(U(this->status.health));
+    j[U("Status")] = k;
+    j[U("ServiceEnabled")] = json::value::boolean(U(this->service_enabled));
+    j[U("AuthFailureLoggingThreshold")] = json::value::number(U(this->auth_failure_logging_threshold));
+    j[U("MinPasswordLength")] = json::value::number(U(this->min_password_length));
+    j[U("AccountLockoutThreshold")] = json::value::number(U(this->account_lockout_threshold));
+    j[U("AccountLockoutDuration")] = json::value::number(U(this->account_lockout_duration));
+    j[U("AccountLockoutCounterResetAfter")] = json::value::number(U(this->account_lockout_counter_reset_after));
+    j[U("AccountLockoutCounterResetEnabled")] = json::value::number(U(this->account_lockout_counter_reset_enabled));
+    j[U("Accounts")] = this->account_collection->get_odata_id_json();
+    j[U("Roles")] = this->role_collection->get_odata_id_json();
+    return j;
+}
+// AccountService end
