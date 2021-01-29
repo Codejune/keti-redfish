@@ -26,7 +26,7 @@ Handler::Handler(utility::string_t url, http_listener_config config) : m_listene
 void Handler::handle_get(http_request request)
 {
 
-    BOOST_LOG_SEV(lg, info) << "get request recieve";
+    BOOST_LOG_SEV(lg, info) << "Request method: GET";
     string uri = request.request_uri().to_string();
     vector<string> uri_tokens = string_split(uri, '/');
     string filtered_uri = make_path(uri_tokens);
@@ -35,15 +35,15 @@ void Handler::handle_get(http_request request)
     json::value k = request.extract_json().get();
 
     // TODO 인증!
-    string username = k.at("UserName").as_string();
-    string password = k.at("Password").as_string();
-    BOOST_LOG_SEV(lg, info) << "UserName: " << username;
-    BOOST_LOG_SEV(lg, info) << "Password: " << password;
+    // string username = k.at("UserName").as_string();
+    // string password = k.at("Password").as_string();
+    // BOOST_LOG_SEV(lg, info) << "UserName: " << username;
+    // BOOST_LOG_SEV(lg, info) << "Password: " << password;
 
-    int ret = pam_authentication("krbmc", username.c_str(), password.c_str());
-    if (ret == PAM_SUCCESS) {
-        BOOST_LOG_SEV(lg, info) << "성공!";
-    }
+    // int ret = pam_authentication("krbmc", username.c_str(), password.c_str());
+    // if (ret == PAM_SUCCESS) {
+    //     BOOST_LOG_SEV(lg, info) << "성공!";
+    // }
 
     BOOST_LOG_SEV(lg, info) << "Reqeust URL : " << filtered_uri;
     BOOST_LOG_SEV(lg, info) << "Request Body : " << request.to_string();
@@ -66,9 +66,11 @@ void Handler::handle_get(http_request request)
     }
 
     // base64_encode();
-    // request.headers().add("Set-Cookie", json::value::string("123456789abcdefghijklmnopqrstuvwxyz"));
+    http_response response(status_codes::Created);
+    response.headers().add("X-Auth-Token", json::value::string("12623963E803C264"));
+    response.set_body(j);
     // BOOST_LOG_SEV(lg, info) << "Request Body : " << request.to_string();
-    request.reply(status_codes::OK, j);
+    request.reply(response);
 }
 
 /**
@@ -108,13 +110,45 @@ void Handler::handle_put(http_request request)
  */
 void Handler::handle_post(http_request request)
 {
+    string uri = request.request_uri().to_string();
+    vector<string> uri_tokens = string_split(uri, '/');
+    string filtered_uri = make_path(uri_tokens);
+    json::value b = request.extract_json().get();
+    
+    BOOST_LOG_SEV(lg, info) << "Request method: POST";
+    BOOST_LOG_SEV(lg, info) << "Reqeust uri : " << filtered_uri;
 
-    cout << "handle_post request" << endl;
+    if (filtered_uri == ODATA_ACCOUNT_ID)
+    {
+        string user_name = "";
+        string password = nullptr;
+        string role_id = nullptr;
+        bool enabled = false;
 
-    vector<string> input_list;
-    input_list.reserve(list.size());
+        // Required account information check
+        if (b.find("UserName") == b.end() && b.find("Password") == b.end())
+            request.reply(status_codes::BadRequest, U("POST Request Response"));
 
-    auto j = request.extract_json().get();
+        user_name = b.at("UserName").as_string();
+        password = b.at("Password").as_string();
+
+        // Additinal account information check
+        if (b.find("RoleId") != b.end())
+            role_id = b.at("RoleId").as_string();
+        if (b.find("Enabled") != b.end())
+            enabled = b.at("Enabled").as_bool();
+
+        // TODO id를 계정 이름 말고 숫자로 변경 필요
+        string odata_id = ODATA_ACCOUNT_ID + "/" + user;
+        Account *account = new Account(odata_id);
+        account->name = "User Account";
+        account->user_name = user_name;
+        account->id = user_name;
+        account->password = password;
+        account->role_id = role_id;
+        account->locked = false;
+        request.reply(status_code::Created);
+    }
 
     request.reply(status_codes::NotImplemented, U("POST Request Response"));
 }

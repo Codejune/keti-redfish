@@ -152,7 +152,7 @@ bool Collection::load_json(void)
     {
         throw json::json_exception("Error Parsing JSON file " + this->odata.id);
         return false;
-    }
+    }dd
 
     return true;
 }
