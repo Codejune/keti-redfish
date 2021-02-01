@@ -26,17 +26,37 @@ vector<string> string_split(const string _string, char _delimiter)
     return tokens;
 }
 
-string make_path(vector<string> tokens)
+/**
+ * @brief Make full path from tokens
+ * 
+ * @param _tokens String token vector
+ * @return string Path string
+ */
+string make_path(vector<string> _tokens)
 {
     string path = "/";
-    for (unsigned int i = 0; i < tokens.size(); i++)
-    {
-        if (tokens[i] != "") {
+    for (unsigned int i = 0; i < _tokens.size(); i++)
+        if (_tokens[i] != "")
+        {
             if (i == 0)
-                path = path + tokens[i];
+                path = path + _tokens[i];
             else
-                path = path + '/' + tokens[i];
+                path = path + '/' + _tokens[i];
         }
-    }
     return path;
+}
+
+/**
+ * @brief Sort function of string compare
+ * 
+ * @param _firt_string First string
+ * @param _second_string Second string
+ * @return true First string faster
+ * @return false Second string faster
+ */
+bool comp(const string &_firt_string, const string &_second_string)
+{
+    if (_firt_string.size() == _second_string.size())
+        return _firt_string < _second_string;
+    return _firt_string.size() < _second_string.size();
 }

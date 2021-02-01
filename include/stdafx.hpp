@@ -34,6 +34,12 @@ namespace keywords = boost::log::keywords;
 
 using namespace logging::trivial;
 
+extern src::severity_logger<severity_level> g_logger;
+
+#define log(level) BOOST_LOG_SEV(g_logger, level)
+
 vector<string> string_split(const string _string, char _delimiter);
 string make_path(vector<string> tokens);
+bool comp(const string &s1, const string &s2);
+
 #endif

@@ -12,9 +12,9 @@ extern unordered_map<string, Resource *> g_record;
  */
 bool record_is_exist(const string _uri)
 {
-    if (g_record.find(_uri) == g_record.end())
-        return false;
-    return true;
+    if (g_record.find(_uri) != g_record.end())
+        return true;
+    return false;
 }
 
 json::value record_get_json(const string _uri)
@@ -52,6 +52,7 @@ json::value record_get_json(const string _uri)
     case TASK_SERVICE_TYPE:
         break;
     case SESSION_SERVICE_TYPE:
+        j = ((SessionService *)g_record[_uri])->get_json();
         break;
     case SESSION_TYPE:
         break;
@@ -138,4 +139,18 @@ bool record_save_json(void)
     for (auto it = g_record.begin(); it != g_record.end(); it++)
         it->second->save_json();
     return true;
+}
+
+/**
+ * @brief Print sorted keys of record
+ * 
+ */
+void record_print(void)
+{
+    vector<string> keys;
+    for (auto it = g_record.begin(); it != g_record.end(); it++)
+        keys.push_back(it->first);
+    sort(keys.begin(), keys.end(), comp);
+    for (unsigned int i = 0; i < keys.size(); i++)
+        log(info) << keys[i];
 }

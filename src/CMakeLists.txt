@@ -12,7 +12,6 @@ set(
     resource.cpp
     util.cpp
     record.cpp
-    auth.cpp
 )
 
 # Directory setting
