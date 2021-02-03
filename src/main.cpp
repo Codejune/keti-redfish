@@ -4,6 +4,7 @@
 unique_ptr<Handler> g_listener;
 unordered_map<string, Resource *> g_record;
 src::severity_logger<severity_level> g_logger;
+ServiceRoot *g_service_root;
 
 /**
  * @brief Resource initialization
@@ -12,8 +13,7 @@ void resource_init(void)
 {
     log(info) << "Redfish resource initializing...";
 
-    ServiceRoot *service_root = new ServiceRoot();
-
+    g_service_root = new ServiceRoot();
     // record_load_json();
     record_save_json();
 }
@@ -70,6 +70,7 @@ int main(int _argc, char *_argv[])
     while (true)
     {
         // TODO 리소스 업데이트 관련 구현 필요
+        pause();
     }
     g_listener->close().wait();
     exit(0);

@@ -18,6 +18,10 @@
 #include <boost/log/utility/setup/common_attributes.hpp>
 #include <boost/log/sources/severity_logger.hpp>
 #include <boost/log/sources/record_ostream.hpp>
+#include <boost/asio.hpp>
+#include <boost/bind/bind.hpp>
+#include <boost/thread/thread.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
 #include <unistd.h>
 #include <dirent.h>
 
@@ -36,10 +40,26 @@ using namespace logging::trivial;
 
 extern src::severity_logger<severity_level> g_logger;
 
+/**
+ * @brief Logging macro
+ */
 #define log(level) BOOST_LOG_SEV(g_logger, level)
 
+/**
+ * @brief Function of utilities
+ */
 vector<string> string_split(const string _string, char _delimiter);
 string make_path(vector<string> tokens);
 bool comp(const string &s1, const string &s2);
+void timer(boost::asio::deadline_timer* _timer, unsigned int *_remain_expires_time);
+
+/**
+ * @brief Function of record
+ */
+bool record_is_exist(const string _uri);
+json::value record_get_json(const string _uri);
+bool record_load_json(void);
+bool record_save_json(void);
+void record_print(void);
 
 #endif

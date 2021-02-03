@@ -36,6 +36,7 @@ void Handler::handle_get(http_request _request)
 
     log(info) << "Reqeust URL : " << filtered_uri;
     log(info) << "Request Body : " << _request.to_string();
+    record_print();
 
     // Response redfish version
     if (uri_tokens.size() == 1 && uri_tokens[0] == "redfish")
@@ -47,7 +48,6 @@ void Handler::handle_get(http_request _request)
     // Response redfish resource
     else
     {
-        log(info) << filtered_uri;
         if (record_is_exist(filtered_uri))
             j = record_get_json(filtered_uri);
         else
@@ -58,8 +58,8 @@ void Handler::handle_get(http_request _request)
     http_response response(status_codes::Created);
     response.headers().add("X-Auth-Token", json::value::string("12623963E803C264"));
     response.set_body(j);
-    // log(info) << "Request Body : " << request.to_string();
     _request.reply(response);
+
     g_count++;
     log(info) << g_count;
 }
@@ -105,6 +105,10 @@ void Handler::handle_post(http_request _request)
     vector<string> uri_tokens = string_split(uri, '/');
     string filtered_uri = make_path(uri_tokens);
     json::value b = _request.extract_json().get();
+    string user_name;
+    string password;
+    string odata_id;
+    Account *account;
 
     log(info) << "Request method: POST";
     log(info) << "Reqeust uri : " << filtered_uri;
@@ -112,13 +116,10 @@ void Handler::handle_post(http_request _request)
     // Account handling
     if (filtered_uri == ODATA_ACCOUNT_ID)
     {
-        string user_name;
-        string password;
         string role_id = "ReadOnly";
         bool enabled = true;
-        string odata_id;
-        string temp;
 
+        // TODO try, catch문으로 변경 예정
         // Required account information check
         if (b.as_object().find("UserName") == b.as_object().end() && b.as_object().find("Password") == b.as_object().end())
         {
@@ -129,11 +130,18 @@ void Handler::handle_post(http_request _request)
         {
             user_name = b.at("UserName").as_string();
             password = b.at("Password").as_string();
-            temp = ODATA_ACCOUNT_ID;
-            temp = temp + '/' + user_name;
+
+            // Check password length enought
+            if (password.size() < ((AccountService *)g_record[ODATA_ACCOUNT_SERVICE_ID])->min_password_length)
+            {
+                _request.reply(status_codes::BadRequest);
+                return;
+            }
+            odata_id = ODATA_ACCOUNT_ID;
+            odata_id = odata_id + '/' + user_name;
 
             // Check account exist
-            if (record_is_exist(temp))
+            if (record_is_exist(odata_id))
             {
                 _request.reply(status_codes::Conflict);
                 return;
@@ -143,12 +151,12 @@ void Handler::handle_post(http_request _request)
         // Additinal account information check
         if (b.as_object().find("RoleId") != b.as_object().end())
         {
-            temp = ODATA_ROLE_ID;
+            odata_id = ODATA_ROLE_ID;
             role_id = b.at("RoleId").as_string();
 
             // Check role exist
-            temp = temp + '/' + role_id;
-            if (!record_is_exist(temp))
+            odata_id = odata_id + '/' + role_id;
+            if (!record_is_exist(odata_id))
             {
                 _request.reply(status_codes::BadRequest);
                 return;
@@ -159,8 +167,7 @@ void Handler::handle_post(http_request _request)
 
         // TODO id를 계정 이름 말고 숫자로 변경 필요
         odata_id = filtered_uri + '/' + user_name;
-        log(info) << odata_id;
-        Account *account = new Account(odata_id, role_id);
+        account = new Account(odata_id, role_id);
         account->name = "User Account";
         account->user_name = user_name;
         account->id = user_name;
@@ -168,14 +175,62 @@ void Handler::handle_post(http_request _request)
         account->enabled = enabled;
         account->locked = false;
 
-        Collection *accounts = (Collection *)g_record[ODATA_ACCOUNT_ID];
-        accounts->add_member(account);
+        Collection *account_collection = (Collection *)g_record[ODATA_ACCOUNT_ID];
+        account_collection->add_member(account);
 
         _request.reply(status_codes::Created);
     }
     else if (filtered_uri == ODATA_SESSION_ID)
     {
+        try
+        {
+            user_name = b.at("UserName").as_string();
+            password = b.at("Password").as_string();
+
+            odata_id = ODATA_ACCOUNT_ID;
+            odata_id = odata_id + '/' + user_name;
+
+            // Check account exist
+            if (!record_is_exist(odata_id))
+            {
+                _request.reply(status_codes::BadRequest);
+                return;
+            }
+
+            account = (Account *)g_record[odata_id];
+            // Check password correct
+            if (account->password != password)
+            {
+                _request.reply(status_codes::BadRequest);
+                return;
+            }
+
+            // TODO 세션 id 생성 필요
+            string odata_id = ODATA_SESSION_ID;
+            odata_id = odata_id + "/12623963E803C264";
+            Session *session = new Session(odata_id, "12623963E803C264", account);
+            session->start();
+
+            http_response response(status_codes::Created);
+            response.headers().add("X-Auth-Token", json::value::string("12623963E803C264"));
+            response.set_body(json::value::object());
+
+            _request.reply(response);
+            return;
+        }
+        catch (json::json_exception &e)
+        {
+            _request.reply(status_codes::BadRequest);
+        }
     }
 
     _request.reply(status_codes::BadRequest);
 }
+
+// http_response basic_response(status_codes _status)
+// {
+//     http_response response(_status);
+//     response.headers().add("")
+
+//     return response;
+// }

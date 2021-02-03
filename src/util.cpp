@@ -60,3 +60,15 @@ bool comp(const string &_firt_string, const string &_second_string)
         return _firt_string < _second_string;
     return _firt_string.size() < _second_string.size();
 }
+
+
+void timer(boost::asio::deadline_timer* _timer, unsigned int *_remain_expires_time)
+{
+    if (*_remain_expires_time > 0)
+    {
+        log(debug) << "Session expires remain: " << *_remain_expires_time;
+        --(*_remain_expires_time);
+        _timer->expires_at(_timer->expires_at() + boost::posix_time::seconds(1));
+        _timer->async_wait(boost::bind(timer, _timer, _remain_expires_time));
+    }
+}

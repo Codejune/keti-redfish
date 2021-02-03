@@ -1,6 +1,6 @@
 # CMake version
 cmake_minimum_required(
-    VERSION 3.16
+    VERSION 3.2
 )
 
 # Project information
@@ -24,7 +24,7 @@ set(GCC ${CROSS_COMPILE}gcc)
 set(GPP ${CROSS_COMPILE}g++)
 set(CMAKE_C_COMPILER ${GCC})
 set(CMAKE_CXX_COMPILER ${GPP})
-set(CMAKE_CXX_FLAGS "-O1 -Wall -DBOOST_LOG_DYN_LINK -std=c++11") 
+set(CMAKE_CXX_FLAGS "-O1 -Wall -DBOOST_LOG_DYN_LINK -Wno-psabi -std=c++11") 
 set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g") 
 message(STATUS "Compiler")
 message(STATUS " - ID       \t: ${CMAKE_CXX_COMPILER_ID}")

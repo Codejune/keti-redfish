@@ -36,6 +36,7 @@ json::value record_get_json(const string _uri)
     case SIMPLE_STORAGE_TYPE:
         break;
     case CHASSIS_TYPE:
+        j = ((Chassis *)g_record[_uri])->get_json();
         break;
     case THERMAL_TYPE:
         break;
@@ -55,6 +56,7 @@ json::value record_get_json(const string _uri)
         j = ((SessionService *)g_record[_uri])->get_json();
         break;
     case SESSION_TYPE:
+        j = ((Session *)g_record[_uri])->get_json();
         break;
     case ACCOUNT_SERVICE_TYPE:
         j = ((AccountService *)g_record[_uri])->get_json();
@@ -99,6 +101,7 @@ bool record_load_json(void)
         case SIMPLE_STORAGE_TYPE:
             break;
         case CHASSIS_TYPE:
+            // ((Chassis *)it->second)->load_json();
             break;
         case THERMAL_TYPE:
             break;
@@ -115,14 +118,19 @@ bool record_load_json(void)
         case TASK_SERVICE_TYPE:
             break;
         case SESSION_SERVICE_TYPE:
+            // ((SessionService *)it->second)->load_json();
             break;
         case SESSION_TYPE:
+            // ((Session *)it->second)->load_json();
             break;
         case ACCOUNT_SERVICE_TYPE:
+            // ((AccountService *)it->second)->load_json();
             break;
         case ACCOUNT_TYPE:
+            // ((Account *)it->second)->load_json();
             break;
         case ROLE_TYPE:
+            // ((Role *)it->second)->load_json();
             break;
         case EVENT_SERVICE_TYPE:
             break;

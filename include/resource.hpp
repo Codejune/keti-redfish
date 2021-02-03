@@ -257,7 +257,7 @@ public:
         assigned_privileges.push_back("test");
 
         g_record[_odata_id] = this;
-    }
+    };
     ~Role(){};
 
     json::value get_json(void);
@@ -274,25 +274,27 @@ public:
     bool enabled;
     string password;
     string user_name;
-    string role_id;
     bool locked;
     Role *role;
 
     Account(const string _odata_id, const string _role_id) : Resource(ACCOUNT_TYPE, _odata_id, ODATA_ACCOUNT_TYPE)
     {
-        string temp = ODATA_ROLE_ID;
-        temp = temp + '/' + _role_id;
+        string odata_id;
+        odata_id = ODATA_ROLE_ID;
+        odata_id = odata_id + '/' + _role_id;
 
         this->id = "";
         this->enabled = false;
         this->password = "";
         this->user_name = "";
-        this->role_id = _role_id;
-        this->role = (Role *)g_record[temp];
+        if (record_is_exist(odata_id))
+            this->role = (Role *)g_record[odata_id];
+        else
+            this->role = nullptr;
         this->locked = false;
 
         g_record[_odata_id] = this;
-    }
+    };
     ~Account(){};
 
     json::value get_json(void);
@@ -308,12 +310,12 @@ public:
     string id;
     Status status;
     bool service_enabled;
-    int auth_failure_logging_threshold;
-    int min_password_length;
-    int account_lockout_threshold;
-    int account_lockout_duration;
-    int account_lockout_counter_reset_after;
-    int account_lockout_counter_reset_enabled;
+    unsigned int auth_failure_logging_threshold;
+    unsigned int min_password_length;
+    unsigned int account_lockout_threshold;
+    unsigned int account_lockout_duration;
+    unsigned int account_lockout_counter_reset_after;
+    unsigned int account_lockout_counter_reset_enabled;
     Collection *account_collection;
     Collection *role_collection;
 
@@ -327,19 +329,18 @@ public:
         this->status.health = STATUS_HEALTH_OK;
         this->service_enabled = true;
         this->auth_failure_logging_threshold = 0;
-        this->min_password_length = 0;
+        this->min_password_length = 6;
         this->account_lockout_threshold = 0;
         this->account_lockout_duration = 0;
         this->account_lockout_counter_reset_after = 0;
         this->account_lockout_counter_reset_enabled = 0;
 
-        // AccountCollection configuration
-        this->account_collection = new Collection(ODATA_ACCOUNT_ID, ODATA_ACCOUNT_COLLECTION_TYPE);
-        account_collection->name = "Accounts Collection";
-
-        // RoleCollection configuration
+        // Role collection configure
         this->role_collection = new Collection(ODATA_ROLE_ID, ODATA_ROLE_COLLECTION_TYPE);
         this->role_collection->name = "Roles Collection";
+        // Account collection configure
+        this->account_collection = new Collection(ODATA_ACCOUNT_ID, ODATA_ACCOUNT_COLLECTION_TYPE);
+        this->account_collection->name = "Accounts Collection";
 
         // Administrator role configuration
         Role *_administrator = new Role(this->role_collection->odata.id + "/Administrator");
@@ -369,13 +370,58 @@ public:
         _read_only->assigned_privileges.push_back("Login");
         _read_only->assigned_privileges.push_back("ConfigureSelf");
 
-        role_collection->add_member(_administrator);
-        role_collection->add_member(_operator);
-        role_collection->add_member(_read_only);
+        // Root account configure
+        Account *_root = new Account(this->account_collection->odata.id + "/root", "Administrator");
+        _root->id = "root";
+        _root->name = "User Account";
+        _root->user_name = "root";
+        _root->password = "ketilinux";
+        _root->enabled = true;
+        _root->locked = false;
+
+        this->account_collection->add_member(_root);
+        this->role_collection->add_member(_administrator);
+        this->role_collection->add_member(_operator);
+        this->role_collection->add_member(_read_only);
 
         g_record[ODATA_ACCOUNT_SERVICE_ID] = this;
     };
     ~AccountService(){};
+
+    json::value get_json(void);
+    bool load_json(void);
+};
+
+/**
+ * @brief Redfish resource of session service
+ */
+class SessionService : public Resource
+{
+public:
+    string id;
+    Status status;
+    bool service_enabled;
+    unsigned int session_timeout;
+    Collection *session_collection;
+
+    // Class constructor, destructor oveloading
+    SessionService() : Resource(SESSION_SERVICE_TYPE, ODATA_SESSION_SERVICE_ID, ODATA_SESSION_SERVICE_TYPE)
+    {
+        // AccountService configuration
+        this->name = "Session Service";
+        this->id = "SessionService";
+        this->status.state = STATUS_STATE_ENABLED;
+        this->status.health = STATUS_HEALTH_OK;
+        this->service_enabled = true;
+        this->session_timeout = 30;
+
+        // AccountCollection configuration
+        this->session_collection = new Collection(ODATA_SESSION_ID, ODATA_SESSION_TYPE);
+        session_collection->name = "Session Collection";
+
+        g_record[ODATA_SESSION_SERVICE_ID] = this;
+    };
+    ~SessionService(){};
 
     json::value get_json(void);
     bool load_json(void);
@@ -396,47 +442,18 @@ public:
         this->name = "User Session";
         this->id = _session_id;
         this->account = _account;
-
+        this->_remain_expires_time = ((SessionService *)g_record[ODATA_SESSION_SERVICE_ID])->session_timeout;
         g_record[_odata_id] = this;
     };
-    ~Session(){};
-    json::value get_json(void);
-    bool load_json(void);
-};
-
-/**
- * @brief Redfish resource of session service
- */
-class SessionService : public Resource
-{
-public:
-    string id;
-    Status status;
-    bool service_enabled;
-    int session_timeout;
-    Collection *session_collection;
-
-    // Class constructor, destructor oveloading
-    SessionService() : Resource(SESSION_SERVICE_TYPE, ODATA_SESSION_SERVICE_ID, ODATA_SESSION_SERVICE_TYPE)
-    {
-        // AccountService configuration
-        this->name = "Session Service";
-        this->id = "SessionService";
-        this->status.state = STATUS_STATE_ENABLED;
-        this->status.health = STATUS_HEALTH_OK;
-        this->service_enabled = true;
-        this->session_timeout = 30;
-
-        // AccountCollection configuration
-        this->session_collection = new Collection(ODATA_ACCOUNT_ID, ODATA_ACCOUNT_COLLECTION_TYPE);
-        session_collection->name = "Session Collection";
-
-        g_record[ODATA_SESSION_SERVICE_ID] = this;
+    ~Session(){
+        g_record.erase(this->odata.id);
     };
-    ~SessionService(){};
-
     json::value get_json(void);
     bool load_json(void);
+    pplx::task<void> start(void);
+
+private:
+    unsigned int _remain_expires_time;
 };
 
 /**
@@ -529,7 +546,6 @@ public:
         manager_collection->name = "Manager Collection";
         account_service = new AccountService();
         session_service = new SessionService();
-
         g_record[ODATA_SERVICE_ROOT_ID] = this;
     };
     ~ServiceRoot(){};
@@ -537,11 +553,5 @@ public:
     json::value get_json(void);
     bool load_json(void);
 };
-
-bool record_is_exist(const string _uri);
-json::value record_get_json(const string _uri);
-bool record_load_json(void);
-bool record_save_json(void);
-void record_print(void);
 
 #endif

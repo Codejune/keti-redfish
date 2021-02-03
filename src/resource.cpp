@@ -118,9 +118,17 @@ json::value Account::get_json(void)
     j[U("Enabled")] = json::value::boolean(U(this->enabled));
     j[U("Password")] = json::value::string(U(this->password));
     j[U("UserName")] = json::value::string(U(this->user_name));
-    j[U("RoleId")] = json::value::string(U(this->role_id));
+    if(this->role == nullptr)
+    {
+        j[U("RoleId")] = json::value::null();
+        k = json::value::object();
+    }
+    else
+    {
+        j[U("RoleId")] = json::value::string(U(this->role->id));
+        k[U("Role")] = this->role->get_odata_id_json();
+    }
     j[U("Locked")] = json::value::boolean(U(this->locked));
-    k[U("Role")] = this->role->get_odata_id_json();
     j[U("Links")] = k;
     return j;
 }
@@ -143,7 +151,6 @@ json::value AccountService::get_json(void)
 {
     auto j = this->Resource::get_json();
     json::value k;
-
     j[U("Id")] = json::value::string(U(this->id));
     k[U("State")] = json::value::string(U(this->status.state));
     k[U("Health")] = json::value::string(U(this->status.health));
@@ -161,16 +168,6 @@ json::value AccountService::get_json(void)
 }
 // AccountService end
 
-// Session start
-json::value Session::get_json(void)
-{
-    auto j = this->Resource::get_json();
-    j[U("Id")] = json::value::string(U(this->id));
-    j[U("UserName")] = json::value::string(U(this->account->user_name));
-    return j;
-}
-// Session end
-
 // SessionService start
 json::value SessionService::get_json(void)
 {
@@ -186,6 +183,30 @@ json::value SessionService::get_json(void)
     return j;
 }
 // SessionService end
+
+// Session start
+json::value Session::get_json(void)
+{
+    auto j = this->Resource::get_json();
+    j[U("Id")] = json::value::string(U(this->id));
+    j[U("UserName")] = json::value::string(U(this->account->user_name));
+    return j;
+}
+
+pplx::task<void> Session::start(void)
+{
+    Session *session = this;
+    unsigned int *remain_expires_time = &this->_remain_expires_time;
+    return pplx::create_task([remain_expires_time]{
+        boost::asio::io_service io;
+        boost::asio::deadline_timer session_timer(io, boost::posix_time::seconds(1));
+        session_timer.async_wait(boost::bind(timer, &session_timer, remain_expires_time));
+        io.run();
+    }).then([session]{
+        delete session;
+    });
+}
+// Session end
 
 // Chassis start
 json::value Chassis::get_json(void)
