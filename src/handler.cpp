@@ -38,28 +38,40 @@ void Handler::handle_get(http_request _request)
     log(info) << "Request Body : " << _request.to_string();
     record_print();
 
-    // Response redfish version
-    if (uri_tokens.size() == 1 && uri_tokens[0] == "redfish")
+    try
     {
-        j[REDFISH_VERSION] = json::value::string(U(ODATA_SERVICE_ROOT_ID));
-        _request.reply(status_codes::OK, j);
-        return;
+        // Check X-Auth-Token feild of request
+        if (!_request.headers().has("X-Auth-Token"))
+        {
+            _request.reply(status_codes::Unauthorized);
+            return;
+        }
+
+        // Check session is valid
+        if (is_session_valid(_request.headers()["X-Auth-Token"]))
+        {
+            // Response redfish version
+            if (uri_tokens.size() == 1 && uri_tokens[0] == "redfish")
+            {
+                j[REDFISH_VERSION] = json::value::string(U(ODATA_SERVICE_ROOT_ID));
+                _request.reply(status_codes::OK, j);
+                return;
+            }
+            // Response redfish resource
+            else
+            {
+                if (record_is_exist(filtered_uri))
+                    j = record_get_json(filtered_uri);
+                else
+                    _request.reply(status_codes::NotFound);
+            }
+        }
     }
-    // Response redfish resource
-    else
+    catch (json::json_exception &e)
     {
-        if (record_is_exist(filtered_uri))
-            j = record_get_json(filtered_uri);
-        else
-            _request.reply(status_codes::NotFound);
+        _request.reply(status_codes::BadRequest);
     }
-
-    // base64_encode();
-    http_response response(status_codes::Created);
-    response.headers().add("X-Auth-Token", json::value::string("12623963E803C264"));
-    response.set_body(j);
-    _request.reply(response);
-
+    _request.reply(status_codes::OK, j);
     g_count++;
     log(info) << g_count;
 }
@@ -112,22 +124,14 @@ void Handler::handle_post(http_request _request)
 
     log(info) << "Request method: POST";
     log(info) << "Reqeust uri : " << filtered_uri;
-
-    // Account handling
-    if (filtered_uri == ODATA_ACCOUNT_ID)
+    try
     {
-        string role_id = "ReadOnly";
-        bool enabled = true;
+        // Account handling
+        if (filtered_uri == ODATA_ACCOUNT_ID)
+        {
+            string role_id = "ReadOnly";
+            bool enabled = true;
 
-        // TODO try, catch문으로 변경 예정
-        // Required account information check
-        if (b.as_object().find("UserName") == b.as_object().end() && b.as_object().find("Password") == b.as_object().end())
-        {
-            _request.reply(status_codes::BadRequest);
-            return;
-        }
-        else
-        {
             user_name = b.at("UserName").as_string();
             password = b.at("Password").as_string();
 
@@ -140,50 +144,48 @@ void Handler::handle_post(http_request _request)
             odata_id = ODATA_ACCOUNT_ID;
             odata_id = odata_id + '/' + user_name;
 
-            // Check account exist
+            // Check account already exist
             if (record_is_exist(odata_id))
             {
                 _request.reply(status_codes::Conflict);
                 return;
             }
-        }
 
-        // Additinal account information check
-        if (b.as_object().find("RoleId") != b.as_object().end())
-        {
-            odata_id = ODATA_ROLE_ID;
-            role_id = b.at("RoleId").as_string();
-
-            // Check role exist
-            odata_id = odata_id + '/' + role_id;
-            if (!record_is_exist(odata_id))
+            // Additinal account information check
+            if (b.as_object().find("RoleId") != b.as_object().end())
             {
-                _request.reply(status_codes::BadRequest);
-                return;
+                odata_id = ODATA_ROLE_ID;
+                role_id = b.at("RoleId").as_string();
+                odata_id = odata_id + '/' + role_id;
+                // Check role exist
+                if (!record_is_exist(odata_id))
+                {
+                    _request.reply(status_codes::BadRequest);
+                    return;
+                }
             }
+            if (b.as_object().find("Enabled") != b.as_object().end())
+                enabled = b.at("Enabled").as_bool();
+
+            // TODO id를 계정 이름 말고 숫자로 변경 필요
+            odata_id = filtered_uri + '/' + user_name;
+            account = new Account(odata_id, role_id);
+            account->name = "User Account";
+            account->user_name = user_name;
+            account->id = user_name;
+            account->password = password;
+            account->enabled = enabled;
+            account->locked = false;
+
+            Collection *account_collection = (Collection *)g_record[ODATA_ACCOUNT_ID];
+            account_collection->add_member(account);
+
+            _request.reply(status_codes::Created);
         }
-        if (b.as_object().find("Enabled") != b.as_object().end())
-            enabled = b.at("Enabled").as_bool();
 
-        // TODO id를 계정 이름 말고 숫자로 변경 필요
-        odata_id = filtered_uri + '/' + user_name;
-        account = new Account(odata_id, role_id);
-        account->name = "User Account";
-        account->user_name = user_name;
-        account->id = user_name;
-        account->password = password;
-        account->enabled = enabled;
-        account->locked = false;
-
-        Collection *account_collection = (Collection *)g_record[ODATA_ACCOUNT_ID];
-        account_collection->add_member(account);
-
-        _request.reply(status_codes::Created);
-    }
-    else if (filtered_uri == ODATA_SESSION_ID)
-    {
-        try
+        else if (filtered_uri == ODATA_SESSION_ID)
         {
+
             user_name = b.at("UserName").as_string();
             password = b.at("Password").as_string();
 
@@ -207,21 +209,23 @@ void Handler::handle_post(http_request _request)
 
             // TODO 세션 id 생성 필요
             string odata_id = ODATA_SESSION_ID;
-            odata_id = odata_id + "/12623963E803C264";
-            Session *session = new Session(odata_id, "12623963E803C264", account);
+            string token = generate_token(16);
+            odata_id = odata_id + '/' + token;
+            Session *session = new Session(odata_id, token, account);
             session->start();
 
             http_response response(status_codes::Created);
-            response.headers().add("X-Auth-Token", json::value::string("12623963E803C264"));
+            response.headers().add("X-Auth-Token", token);
+            response.headers().add("Location", session->odata.id);
             response.set_body(json::value::object());
 
             _request.reply(response);
             return;
         }
-        catch (json::json_exception &e)
-        {
-            _request.reply(status_codes::BadRequest);
-        }
+    }
+    catch (json::json_exception &e)
+    {
+        _request.reply(status_codes::BadRequest);
     }
 
     _request.reply(status_codes::BadRequest);

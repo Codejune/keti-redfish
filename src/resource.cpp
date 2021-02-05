@@ -56,7 +56,7 @@ bool Resource::load_json(void)
 
         j = json::value::parse(string_stream);
     }
-    catch (json::json_exception excep)
+    catch (json::json_exception &e)
     {
         throw json::json_exception("Error Parsing JSON file " + this->odata.id);
         return false;
@@ -99,7 +99,7 @@ bool Collection::load_json(void)
         this->name = j.at("Name").as_string();
         log(info) << this->name;
     }
-    catch (json::json_exception excep)
+    catch (json::json_exception &e)
     {
         throw json::json_exception("Error Parsing JSON file " + this->odata.id);
         return false;
@@ -118,7 +118,7 @@ json::value Account::get_json(void)
     j[U("Enabled")] = json::value::boolean(U(this->enabled));
     j[U("Password")] = json::value::string(U(this->password));
     j[U("UserName")] = json::value::string(U(this->user_name));
-    if(this->role == nullptr)
+    if (this->role == nullptr)
     {
         j[U("RoleId")] = json::value::null();
         k = json::value::object();
@@ -197,14 +197,15 @@ pplx::task<void> Session::start(void)
 {
     Session *session = this;
     unsigned int *remain_expires_time = &this->_remain_expires_time;
-    return pplx::create_task([remain_expires_time]{
-        boost::asio::io_service io;
-        boost::asio::deadline_timer session_timer(io, boost::posix_time::seconds(1));
-        session_timer.async_wait(boost::bind(timer, &session_timer, remain_expires_time));
-        io.run();
-    }).then([session]{
-        delete session;
-    });
+    return pplx::create_task([remain_expires_time] {
+               boost::asio::io_service io;
+               boost::asio::deadline_timer session_timer(io, boost::posix_time::seconds(1));
+               session_timer.async_wait(boost::bind(timer, &session_timer, remain_expires_time));
+               io.run();
+           })
+        .then([session] {
+            delete session;
+        });
 }
 // Session end
 
@@ -280,7 +281,7 @@ bool ServiceRoot::load_json(void)
 
         j = json::value::parse(string_stream);
     }
-    catch (json::json_exception excep)
+    catch (json::json_exception &e)
     {
         throw json::json_exception("Error Parsing JSON file " + this->odata.id);
         return false;
@@ -293,3 +294,14 @@ bool ServiceRoot::load_json(void)
     return true;
 }
 // ServiceRoot end
+
+bool is_session_valid(const string _token_id)
+{
+    Session *session;
+    string odata_id = ODATA_SESSION_ID;
+    odata_id = odata_id + '/' + _token_id;
+    session = (Session *)g_record[odata_id];
+    if (session->_remain_expires_time <= 0)
+        return false;
+    return true;
+}

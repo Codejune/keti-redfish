@@ -233,7 +233,10 @@ public:
         // }
         g_record[_odata_id] = this;
     };
-    ~Collection(){};
+    ~Collection()
+    {
+        g_record.erase(this->odata.id);
+    };
 
     void add_member(Resource *);
     json::value get_json(void);
@@ -256,6 +259,7 @@ public:
         this->is_predefined = false;
         assigned_privileges.push_back("test");
 
+        ((Collection *)g_record[ODATA_ROLE_ID])->add_member(this);
         g_record[_odata_id] = this;
     };
     ~Role(){};
@@ -293,9 +297,13 @@ public:
             this->role = nullptr;
         this->locked = false;
 
+        ((Collection *)g_record[ODATA_ACCOUNT_ID])->add_member(this);
         g_record[_odata_id] = this;
     };
-    ~Account(){};
+    ~Account()
+    {
+        g_record.erase(this->odata.id);
+    };
 
     json::value get_json(void);
     bool load_json(void);
@@ -379,14 +387,12 @@ public:
         _root->enabled = true;
         _root->locked = false;
 
-        this->account_collection->add_member(_root);
-        this->role_collection->add_member(_administrator);
-        this->role_collection->add_member(_operator);
-        this->role_collection->add_member(_read_only);
-
         g_record[ODATA_ACCOUNT_SERVICE_ID] = this;
     };
-    ~AccountService(){};
+    ~AccountService()
+    {
+        g_record.erase(this->odata.id);
+    };
 
     json::value get_json(void);
     bool load_json(void);
@@ -413,7 +419,7 @@ public:
         this->status.state = STATUS_STATE_ENABLED;
         this->status.health = STATUS_HEALTH_OK;
         this->service_enabled = true;
-        this->session_timeout = 30;
+        this->session_timeout = 86400; // 30sec to 86400sec
 
         // AccountCollection configuration
         this->session_collection = new Collection(ODATA_SESSION_ID, ODATA_SESSION_TYPE);
@@ -421,7 +427,10 @@ public:
 
         g_record[ODATA_SESSION_SERVICE_ID] = this;
     };
-    ~SessionService(){};
+    ~SessionService()
+    {
+        g_record.erase(this->odata.id);
+    };
 
     json::value get_json(void);
     bool load_json(void);
@@ -435,6 +444,7 @@ class Session : public Resource
 public:
     string id;
     Account *account;
+    unsigned int _remain_expires_time;
 
     // Class constructor, destructor oveloading
     Session(const string _odata_id, const string _session_id, Account *_account) : Resource(SESSION_TYPE, _odata_id, ODATA_SESSION_TYPE)
@@ -443,9 +453,12 @@ public:
         this->id = _session_id;
         this->account = _account;
         this->_remain_expires_time = ((SessionService *)g_record[ODATA_SESSION_SERVICE_ID])->session_timeout;
+
+        ((Collection *)g_record[ODATA_SESSION_ID])->add_member(this);
         g_record[_odata_id] = this;
     };
-    ~Session(){
+    ~Session()
+    {
         g_record.erase(this->odata.id);
     };
     json::value get_json(void);
@@ -453,7 +466,6 @@ public:
     pplx::task<void> start(void);
 
 private:
-    unsigned int _remain_expires_time;
 };
 
 /**
@@ -506,9 +518,13 @@ public:
         this->location.placement.rack_offset_units = "";
         this->location.placement.rack_offset = 0;
 
+        ((Collection *)g_record[ODATA_CHASSIS_ID])->add_member(this);
         g_record[_odata_id] = this;
     };
-    ~Chassis(){};
+    ~Chassis()
+    {
+        g_record.erase(this->odata.id);
+    };
     json::value get_json(void);
     bool load_json(void);
 };
@@ -548,10 +564,15 @@ public:
         session_service = new SessionService();
         g_record[ODATA_SERVICE_ROOT_ID] = this;
     };
-    ~ServiceRoot(){};
+    ~ServiceRoot()
+    {
+        g_record.erase(this->odata.id);
+    };
 
     json::value get_json(void);
     bool load_json(void);
 };
+
+bool is_session_valid(const string _token_id);
 
 #endif

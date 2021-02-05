@@ -8,6 +8,7 @@
 #include <vector>
 #include <unordered_map>
 #include <fstream>
+#include <ctime>
 #include <cpprest/http_listener.h>
 #include <cpprest/json.h>
 #include <boost/log/core.hpp>
@@ -35,7 +36,6 @@ namespace logging = boost::log;
 namespace src = boost::log::sources;
 namespace sinks = boost::log::sinks;
 namespace keywords = boost::log::keywords;
-
 using namespace logging::trivial;
 
 extern src::severity_logger<severity_level> g_logger;
@@ -52,6 +52,7 @@ vector<string> string_split(const string _string, char _delimiter);
 string make_path(vector<string> tokens);
 bool comp(const string &s1, const string &s2);
 void timer(boost::asio::deadline_timer* _timer, unsigned int *_remain_expires_time);
+string generate_token(const int len);
 
 /**
  * @brief Function of record
