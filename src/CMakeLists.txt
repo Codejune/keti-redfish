@@ -12,6 +12,7 @@ set(
     resource.cpp
     util.cpp
     record.cpp
+    gpio.cpp
 )
 
 # Directory setting

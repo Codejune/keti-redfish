@@ -31,8 +31,7 @@ void Handler::handle_get(http_request _request)
     vector<string> uri_tokens = string_split(uri, '/');
     string filtered_uri = make_path(uri_tokens);
 
-    json::value j;
-    json::value k = _request.extract_json().get();
+    json::value j = _request.extract_json().get();
 
     log(info) << "Reqeust URL : " << filtered_uri;
     log(info) << "Request Body : " << _request.to_string();
@@ -40,38 +39,43 @@ void Handler::handle_get(http_request _request)
 
     try
     {
+        // Response redfish version
+        if (uri_tokens.size() == 1 && uri_tokens[0] == "redfish")
+        {
+            j[REDFISH_VERSION] = json::value::string(U(ODATA_SERVICE_ROOT_ID));
+            _request.reply(status_codes::OK, j);
+            return;
+        }
+
         // Check X-Auth-Token feild of request
-        if (!_request.headers().has("X-Auth-Token"))
+        else if (!_request.headers().has("X-Auth-Token"))
+        {
+            _request.reply(status_codes::NetworkAuthenticationRequired);
+            return;
+        }
+
+        // Check session is valid
+        else if (!is_session_valid(_request.headers()["X-Auth-Token"]))
         {
             _request.reply(status_codes::Unauthorized);
             return;
         }
 
-        // Check session is valid
-        if (is_session_valid(_request.headers()["X-Auth-Token"]))
+        // Check resource is exist
+        else if (!record_is_exist(filtered_uri)) 
         {
-            // Response redfish version
-            if (uri_tokens.size() == 1 && uri_tokens[0] == "redfish")
-            {
-                j[REDFISH_VERSION] = json::value::string(U(ODATA_SERVICE_ROOT_ID));
-                _request.reply(status_codes::OK, j);
-                return;
-            }
-            // Response redfish resource
-            else
-            {
-                if (record_is_exist(filtered_uri))
-                    j = record_get_json(filtered_uri);
-                else
-                    _request.reply(status_codes::NotFound);
-            }
+            _request.reply(status_codes::NotFound);
+            return;
         }
+
+        // Response json type of resource to client
+        _request.reply(status_codes::OK, record_get_json(filtered_uri));
     }
     catch (json::json_exception &e)
     {
         _request.reply(status_codes::BadRequest);
     }
-    _request.reply(status_codes::OK, j);
+
     g_count++;
     log(info) << g_count;
 }

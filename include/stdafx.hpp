@@ -8,7 +8,9 @@
 #include <vector>
 #include <unordered_map>
 #include <fstream>
-#include <ctime>
+#include <algorithm>
+#include <random>
+#include <functional>
 #include <cpprest/http_listener.h>
 #include <cpprest/json.h>
 #include <boost/log/core.hpp>

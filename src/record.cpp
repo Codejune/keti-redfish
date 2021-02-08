@@ -29,6 +29,9 @@ json::value record_get_json(const string _uri)
     case COLLECTION_TYPE:
         j = ((Collection *)g_record[_uri])->get_json();
         break;
+    case LIST_TYPE:
+        j = ((List *)g_record[_uri])->get_json();
+        break;
     case SYSTEM_TYPE:
         break;
     case PROCESSOR_TYPE:
@@ -39,7 +42,13 @@ json::value record_get_json(const string _uri)
         j = ((Chassis *)g_record[_uri])->get_json();
         break;
     case THERMAL_TYPE:
+        j = ((Thermal *)g_record[_uri])->get_json();
         break;
+    case TEMPERATURE_TYPE:
+        j = ((Temperature *)g_record[_uri])->get_json();
+        break;
+    case FAN_TYPE:
+        // j = ((Fan *)g_record[_uri])->get_json();
     case POWER_TYPE:
         break;
     case MANAGER_TYPE:
@@ -94,6 +103,9 @@ bool record_load_json(void)
         case COLLECTION_TYPE:
             ((Collection *)it->second)->load_json();
             break;
+        case LIST_TYPE:
+            // ((List *)it->second)->load_json();
+            break;
         case SYSTEM_TYPE:
             break;
         case PROCESSOR_TYPE:
@@ -104,6 +116,13 @@ bool record_load_json(void)
             // ((Chassis *)it->second)->load_json();
             break;
         case THERMAL_TYPE:
+            // ((Thermal *)it->second)->load_json();   
+            break;
+        case TEMPERATURE_TYPE:
+            // ((Temperature *)it->second)->load_json();   
+            break;
+        case FAN_TYPE:
+            // ((Fan *)it->second)->load_json();   
             break;
         case POWER_TYPE:
             break;

@@ -96,11 +96,14 @@ enum RESOURCE_TYPE
     SUPER_TYPE,
     SERVICE_ROOT_TYPE,
     COLLECTION_TYPE,
+    LIST_TYPE,
     SYSTEM_TYPE,
     PROCESSOR_TYPE,
     SIMPLE_STORAGE_TYPE,
     CHASSIS_TYPE,
     THERMAL_TYPE,
+    TEMPERATURE_TYPE,
+    FAN_TYPE,
     POWER_TYPE,
     MANAGER_TYPE,
     ETHERNET_INTERFACE_TYPE,
@@ -179,11 +182,15 @@ public:
     uint8_t type;
 
     // Class constructor, destructor oveloading
-    Resource(const uint8_t _type, const string _odata_id, const string _odata_type)
+    Resource(const uint8_t _type, const string _odata_id)
     {
         this->name = "";
         this->type = _type;
         this->odata.id = _odata_id;
+        this->odata.type = "";
+    };
+    Resource(const uint8_t _type, const string _odata_id, const string _odata_type) : Resource(_type, _odata_id)
+    {
         this->odata.type = _odata_type;
     };
     ~Resource(){};
@@ -244,6 +251,32 @@ public:
 };
 
 /**
+ * @brief List of resource
+ */
+class List : public Resource
+{
+public:
+    vector<Resource *> members;
+    uint8_t member_type;
+
+    // Class constructor, destructor oveloading
+    List(const string _odata_id, const uint8_t _member_type) : Resource(LIST_TYPE, _odata_id)
+    {
+        this->member_type = _member_type;
+        g_record[_odata_id] = this;
+    };
+
+    ~List()
+    {
+        g_record.erase(this->odata.id);
+    };
+
+    void add_member(Resource *);
+    json::value get_json(void);
+    bool load_json(void);
+};
+
+/**
  * @brief Redfish resource of account
  */
 class Role : public Resource
@@ -262,7 +295,10 @@ public:
         ((Collection *)g_record[ODATA_ROLE_ID])->add_member(this);
         g_record[_odata_id] = this;
     };
-    ~Role(){};
+    ~Role()
+    {
+        g_record.erase(this->odata.id);
+    };
 
     json::value get_json(void);
     bool load_json(void);
@@ -469,6 +505,120 @@ private:
 };
 
 /**
+ * @brief Redfish resource of temperature
+ */
+class Temperature : public Resource
+{
+public:
+    string member_id;
+    Status status;
+    int reading_celsius;
+    int upper_threshold_non_critical;
+    int upper_threshold_critical;
+    int upper_threshold_fatal;
+    int min_reading_range_temp;
+    int max_reading_range_temp;
+    string physical_context;
+
+    // Class constructor, destructor oveloading
+    Temperature(const string _odata_id) : Resource(THERMAL_TYPE, _odata_id, ODATA_THERMAL_TYPE)
+    {
+        this->member_id = "";
+        this->status.state = STATUS_STATE_ENABLED;
+        this->status.health = STATUS_HEALTH_OK;
+        this->reading_celsius = 0;
+        this->upper_threshold_non_critical = 0;
+        this->upper_threshold_critical = 0;
+        this->upper_threshold_fatal = 0;
+        this->min_reading_range_temp = 0;
+        this->max_reading_range_temp = 0;
+        this->physical_context = "";
+        g_record[_odata_id] = this;
+    }
+    Temperature(const string _odata_id, const string _member_id) : Temperature(_odata_id)
+    {
+        this->member_id = _member_id;
+    };
+    ~Temperature()
+    {
+        g_record.erase(this->odata.id);
+    }
+
+    json::value get_json(void);
+    bool load_json(void);
+};
+
+/**
+ * @brief Redfish resource of temperature
+ */
+class Fan : public Resource
+{
+public:
+    string member_id;
+    Status status;
+    int reading;
+    string reading_units;
+    int lower_threshold_fatal;
+    int min_reading_range;
+    int max_reading_range;
+    string physical_context;
+
+    // Class constructor, destructor oveloading
+    Fan(const string _odata_id) : Resource(THERMAL_TYPE, _odata_id, ODATA_THERMAL_TYPE)
+    {
+        this->member_id = "";
+        this->status.state = STATUS_STATE_ENABLED;
+        this->status.health = STATUS_HEALTH_OK;
+        this->reading = 0;
+        this->reading_units = "RPM";
+        this->lower_threshold_fatal = 0;
+        this->min_reading_range = 0;
+        this->max_reading_range = 0;
+        this->physical_context = "";
+        g_record[_odata_id] = this;
+    }
+    Fan(const string _odata_id, const string _member_id) : Fan(_odata_id)
+    {
+        this->member_id = _member_id;
+    };
+    ~Fan()
+    {
+        g_record.erase(this->odata.id);
+    }
+
+    json::value get_json(void);
+    bool load_json(void);
+};
+
+/**
+ * @brief Redfish resource of thermal
+ * 
+ */
+class Thermal : public Resource
+{
+public:
+    string id;
+    List *temperatures;
+    List *fans;
+
+    // Class constructor, destructor oveloading
+    Thermal(const string _odata_id) : Resource(THERMAL_TYPE, _odata_id, ODATA_THERMAL_TYPE)
+    {
+        this->id = "Thermal";
+        this->temperatures = new List(this->odata.id + "/Temperatures", TEMPERATURE_TYPE);
+        this->fans = new List(this->odata.id + "/Fans", FAN_TYPE);
+        g_record[_odata_id] = this;
+    };
+    ~Thermal()
+    {
+        g_record.erase(this->odata.id);
+    };
+
+    json::value get_json(void);
+    bool load_json(void);
+};
+
+/**
  * @brief Redfish resource of chassis
  */
 class Chassis : public Resource
@@ -488,14 +638,15 @@ public:
     Location location;
 
     // TODO 리소스 변경 필요
-    Resource *thermal;
+    Thermal *thermal;
     Resource *power;
+
     // TODO Contains, ManagedBy 추가 필요
     Chassis(const string _odata_id, const string _chassis_id) : Resource(CHASSIS_TYPE, _odata_id, ODATA_CHASSIS_TYPE)
     {
-        this->name = "Edge Server Enclosure";
+        this->name = "";
         this->id = _chassis_id;
-        this->chassis_type = "Enclosure";
+        this->chassis_type = "";
         this->manufacturer = "";
         this->model = "";
         this->sku = "";
@@ -518,6 +669,8 @@ public:
         this->location.placement.rack_offset_units = "";
         this->location.placement.rack_offset = 0;
 
+        this->thermal = new Thermal(this->odata.id + "/Thermal");
+
         ((Collection *)g_record[ODATA_CHASSIS_ID])->add_member(this);
         g_record[_odata_id] = this;
     };
@@ -531,6 +684,7 @@ public:
 
 /**
  * @brief Root of redfish
+ *        This resource create only once
  */
 class ServiceRoot : public Resource
 {
@@ -549,6 +703,8 @@ public:
     // Class constructor, destructor oveloading
     ServiceRoot() : Resource(SERVICE_ROOT_TYPE, ODATA_SERVICE_ROOT_ID, ODATA_SERVICE_ROOT_TYPE)
     {
+        string odata_id;
+
         this->id = "RootService";
         this->name = "Root Service";
         this->redfish_version = "1.0.0";
@@ -558,6 +714,13 @@ public:
         system_collection->name = "Computer System Collection";
         chassis_collection = new Collection(ODATA_CHASSIS_ID, ODATA_CHASSIS_COLLECTION_TYPE);
         chassis_collection->name = "Chassis Collection";
+        odata_id = ODATA_CHASSIS_ID;
+        odata_id = odata_id + "/Enclosure";
+        Chassis *chassis = new Chassis(odata_id, "Enclosure");
+        chassis->name = "EdgeServer Enclosure";
+        chassis->chassis_type = "Enclosure";
+        chassis->manufacturer = "KETI";
+
         manager_collection = new Collection(ODATA_MANAGER_ID, ODATA_MANAGER_COLLECTION_TYPE);
         manager_collection->name = "Manager Collection";
         account_service = new AccountService();

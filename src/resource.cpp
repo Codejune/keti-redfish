@@ -109,6 +109,30 @@ bool Collection::load_json(void)
 }
 // Collection end
 
+// List start
+json::value List::get_json(void)
+{
+    json::value j;
+    j[U(this->name)] = json::value::array();
+    for (unsigned int i = 0; i < this->members.size(); i++)
+        switch(this->member_type)
+        {
+            case TEMPERATURE_TYPE:
+                j[U(this->name)][i] = ((Temperature *)this->members[i])->get_json();
+                break;
+            case FAN_TYPE:
+                j[U(this->name)][i] = ((Fan *)this->members[i])->get_json();
+                break;
+        }
+    return j;
+}
+
+void List::add_member(Resource *_resource)
+{
+    this->members.push_back(_resource);
+}
+// List end
+
 // Account start
 json::value Account::get_json(void)
 {
@@ -209,6 +233,68 @@ pplx::task<void> Session::start(void)
 }
 // Session end
 
+// Temperature start
+json::value Temperature::get_json(void)
+{
+    json::value j;
+    json::value k;
+
+    j[U("Name")] = json::value::string(U(this->name));
+    j[U("@odata.id")] = json::value::string(U(this->odata.id));
+    j[U("MemberId")] = json::value::string(U(this->member_id));
+    k[U("State")] = json::value::string(U(this->status.state));
+    k[U("Health")] = json::value::string(U(this->status.health));
+    j[U("Status")] = k;
+    j[U("ReadingCelsius")] = json::value::number(U(this->reading_celsius));
+    j[U("UpperThresholdNonCritical")] = json::value::number(U(this->upper_threshold_non_critical));
+    j[U("UpperThresholdCritical")] = json::value::number(U(this->upper_threshold_critical));
+    j[U("UpperThresholdFatal")] = json::value::number(U(this->upper_threshold_fatal));
+    j[U("MinReadingRangeTemp")] = json::value::number(U(this->min_reading_range_temp));
+    j[U("MaxReadingRangeTemp")] = json::value::number(U(this->max_reading_range_temp));
+    j[U("PhysicalContext")] = json::value::string(U(this->physical_context));
+
+    return j;
+}
+// Temperature end
+
+// Fan start
+json::value Fan::get_json(void)
+{
+    json::value j;
+    json::value k;
+
+    j[U("Name")] = json::value::string(U(this->name));
+    j[U("@odata.id")] = json::value::string(U(this->odata.id));
+    j[U("MemberId")] = json::value::string(U(this->member_id));
+    k[U("State")] = json::value::string(U(this->status.state));
+    k[U("Health")] = json::value::string(U(this->status.health));
+    j[U("Status")] = k;
+    j[U("Reading")] = json::value::number(U(this->reading));
+    j[U("ReadingUnits")] = json::value::string(U(this->reading_units));
+    j[U("LowerThresholdFatal")] = json::value::number(U(this->lower_threshold_fatal));
+    j[U("MinReadingRange")] = json::value::number(U(this->min_reading_range));
+    j[U("MaxReadingRange")] = json::value::number(U(this->max_reading_range));
+    j[U("PhysicalContext")] = json::value::string(U(this->physical_context));
+
+    return j;
+}
+// Fan end
+
+// Thermal start
+json::value Thermal::get_json(void)
+{
+    auto j = this->Resource::get_json();
+    j[U("Id")] = json::value::string(U(this->id));
+    j[U("Temperatures")] = json::value::array();
+    for (unsigned int i = 0; i < this->temperatures->members.size(); i++)
+        j[U("Temperatures")][i] = ((Temperature *)this->temperatures->members[i])->get_json();
+    j[U("Fans")] = json::value::array();
+    for (unsigned int i = 0; i < this->fans->members.size(); i++)
+        j[U("Fans")][i] = ((Fan *)this->fans->members[i])->get_json();
+    return j;
+}
+// Thermal end
+
 // Chassis start
 json::value Chassis::get_json(void)
 {
@@ -246,6 +332,8 @@ json::value Chassis::get_json(void)
     j[U("Location")] = k;
 
     // TODO Thermal, Power 추가 필요
+    j[U("Thermal")] = this->thermal->get_odata_id_json();
+    // j[U("Power")] = this->power->get_odata_id_json();
     return j;
 }
 // Chassis end
@@ -300,6 +388,8 @@ bool is_session_valid(const string _token_id)
     Session *session;
     string odata_id = ODATA_SESSION_ID;
     odata_id = odata_id + '/' + _token_id;
+    if (!record_is_exist(odata_id))
+        return false;
     session = (Session *)g_record[odata_id];
     if (session->_remain_expires_time <= 0)
         return false;

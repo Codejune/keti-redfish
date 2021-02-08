@@ -72,15 +72,28 @@ void timer(boost::asio::deadline_timer *_timer, unsigned int *_remain_expires_ti
     }
 }
 
-string generate_token(const int len)
+/**
+ * @brief Generate random token string
+ * 
+ * @param _length Token length
+ * @return string Token string
+ */
+string generate_token(const int _length)
 {
-    string token = "";
-    const char alphanum[] = "0123456789"
-                            "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-                            "abcdefghijklmnopqrstuvwxyz";
+    const vector<char> character = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+                                    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J',
+                                    'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T',
+                                    'U', 'V', 'W', 'X', 'Y', 'Z',
+                                    'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j',
+                                    'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't',
+                                    'u', 'v', 'w', 'x', 'y', 'z'};
 
-    srand(time(0));
-    for (int i = 0; i < len; ++i)
-        token += alphanum[rand() % (sizeof(alphanum) - 1)];
+    default_random_engine random_engine(random_device{}());
+    uniform_int_distribution<> distribution(0, character.size() - 1);
+    auto random_char = [character, &distribution, &random_engine]() { return character[distribution(random_engine)]; };
+
+    string token(_length, 0);
+    generate_n(token.begin(), _length, random_char);
+
     return token;
 }

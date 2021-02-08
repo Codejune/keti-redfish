@@ -1,5 +1,6 @@
 #include "handler.hpp"
 #include "resource.hpp"
+#include "gpio.hpp"
 
 unique_ptr<Handler> g_listener;
 unordered_map<string, Resource *> g_record;
@@ -9,7 +10,7 @@ ServiceRoot *g_service_root;
 /**
  * @brief Resource initialization
  */
-void resource_init(void)
+void init_resource(void)
 {
     log(info) << "Redfish resource initializing...";
 
@@ -41,8 +42,10 @@ void start_server(utility::string_t &_url, http_listener_config _config)
 int main(int _argc, char *_argv[])
 {
     // Initialization
-    resource_init();
-
+    init_resource();
+    init_gpio();
+    GPIO_SET = 1 << LED_GREEN;
+    log(info) << GET_GPIO(2);
     http_listener_config listen_config;
     listen_config.set_ssl_context_callback([](boost::asio::ssl::context &_ctx) {
         _ctx.set_options(
@@ -64,7 +67,7 @@ int main(int _argc, char *_argv[])
     });
 
     listen_config.set_timeout(utility::seconds(10));
-    utility::string_t url = U("https://0.0.0.0:80");
+    utility::string_t url = U("https://0.0.0.0:443");
 
     start_server(url, listen_config);
     while (true)
