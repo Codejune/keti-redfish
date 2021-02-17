@@ -1,23 +1,11 @@
 #include "handler.hpp"
 #include "resource.hpp"
-#include "gpio.hpp"
+#include "hwcontrol.hpp"
 
 unique_ptr<Handler> g_listener;
 unordered_map<string, Resource *> g_record;
 src::severity_logger<severity_level> g_logger;
 ServiceRoot *g_service_root;
-
-/**
- * @brief Resource initialization
- */
-void init_resource(void)
-{
-    log(info) << "Redfish resource initializing...";
-
-    g_service_root = new ServiceRoot();
-    // record_load_json();
-    record_save_json();
-}
 
 /**
  * @brief 
@@ -29,7 +17,7 @@ void start_server(utility::string_t &_url, http_listener_config _config)
 {
     g_listener = unique_ptr<Handler>(new Handler(_url, _config));
     g_listener->open().wait();
-    log(info) << "KETI Redfish RESTful server start";
+    log(info) << "Chassis Manager server start";
 }
 
 /**
@@ -42,11 +30,23 @@ void start_server(utility::string_t &_url, http_listener_config _config)
 int main(int _argc, char *_argv[])
 {
     // Initialization
-    init_resource();
-    init_gpio();
-    GPIO_SET = 1 << LED_GREEN;
-    log(info) << GET_GPIO(2);
+    if(init_gpio())
+        log(info) << "GPIO initialization complete";
+
+    if(init_i2c())
+        log(info) << "I2C initialization complete";
+
+    if (init_resource())
+        log(info) << "Redfish resource initialization complete";
+
+    pplx::create_task([]{
+        sleep(3);
+        ((Chassis *)g_service_root->chassis_collection->members[0])->led_lit(LED_GREEN);
+    });
+
     http_listener_config listen_config;
+
+    // Set SSL certification
     listen_config.set_ssl_context_callback([](boost::asio::ssl::context &_ctx) {
         _ctx.set_options(
             boost::asio::ssl::context::default_workarounds | boost::asio::ssl::context::no_sslv2 // Not use SSL2
@@ -56,25 +56,32 @@ int main(int _argc, char *_argv[])
 
         // Certificate Password Provider
         // _ctx.set_password_callback([](size_t max_length,
-        //     boost::asio::ssl::context::password_purpose purpose)
-        // {
-        //    return "password";
+        //                               boost::asio::ssl::context::password_purpose purpose) {
+        //     return "ketilinux";
         // });
 
-        _ctx.use_certificate_chain_file("/conf/ssl/rootca.crt");
-        _ctx.use_private_key_file("/conf/ssl/rootca.key", boost::asio::ssl::context::pem);
-        _ctx.use_tmp_dh_file("/conf/ssl/dh2048.pem");
+        log(info) << "Server crt file path: " << SERVER_CERTIFICATE_CHAIN_PATH;
+        _ctx.use_certificate_chain_file(SERVER_CERTIFICATE_CHAIN_PATH);
+        log(info) << "Server key file path: " << SERVER_PRIVATE_KEY_PATH;
+        _ctx.use_private_key_file(SERVER_PRIVATE_KEY_PATH, boost::asio::ssl::context::pem);
+        log(info) << "Server pem file path: " << SERVER_TMP_DH_PATH;
+        _ctx.use_tmp_dh_file(SERVER_TMP_DH_PATH);
     });
 
-    listen_config.set_timeout(utility::seconds(10));
-    utility::string_t url = U("https://0.0.0.0:443");
+    // Set request timeout
+    log(info) << "Server request timeout: " << SERVER_REQUEST_TIMEOUT << " sec";
+    listen_config.set_timeout(utility::seconds(SERVER_REQUEST_TIMEOUT));
 
+    // Set server entry point
+    log(info) << "Server entry point: " << SERVER_ENTRY_POINT;
+    utility::string_t url = U(SERVER_ENTRY_POINT);
+
+    // RESTful server start
     start_server(url, listen_config);
-    while (true)
-    {
-        // TODO 리소스 업데이트 관련 구현 필요
+
+    while (true) 
         pause();
-    }
+
     g_listener->close().wait();
     exit(0);
 }

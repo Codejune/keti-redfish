@@ -1,6 +1,20 @@
 #include "resource.hpp"
 
 extern unordered_map<string, Resource *> g_record;
+extern ServiceRoot *g_service_root;
+
+/**
+ * @brief Resource initialization
+ */
+bool init_resource(void)
+{
+    g_service_root = new ServiceRoot();
+
+    // record_load_json();
+    record_save_json();
+
+    return true;
+}
 
 // Resource start
 json::value Resource::get_json(void)
@@ -115,14 +129,14 @@ json::value List::get_json(void)
     json::value j;
     j[U(this->name)] = json::value::array();
     for (unsigned int i = 0; i < this->members.size(); i++)
-        switch(this->member_type)
+        switch (this->member_type)
         {
-            case TEMPERATURE_TYPE:
-                j[U(this->name)][i] = ((Temperature *)this->members[i])->get_json();
-                break;
-            case FAN_TYPE:
-                j[U(this->name)][i] = ((Fan *)this->members[i])->get_json();
-                break;
+        case TEMPERATURE_TYPE:
+            j[U("Temperatures")][i] = ((Temperature *)this->members[i])->get_json();
+            break;
+        case FAN_TYPE:
+            j[U("Fans")][i] = ((Fan *)this->members[i])->get_json();
+            break;
         }
     return j;
 }
@@ -255,6 +269,34 @@ json::value Temperature::get_json(void)
 
     return j;
 }
+
+pplx::task<void> Temperature::read(uint8_t _sensor_index, uint8_t _sensor_context)
+{
+    double *reading_celsius = &this->reading_celsius;
+    bool *thread = &this->thread;
+    *thread = true;
+
+    switch (_sensor_context)
+    {
+    case INTAKE_CONTEXT:
+        return pplx::create_task([thread, reading_celsius, _sensor_index] {
+            while (*thread)
+            {
+                *reading_celsius = round(get_intake_temperature(_sensor_index));
+                sleep(1);
+            }
+        });
+    case CPU_CONTEXT:
+        return pplx::create_task([thread, reading_celsius, _sensor_index] {
+            while (*thread)
+            {
+                *reading_celsius = round(get_cpu_temperature(_sensor_index));
+                sleep(1);
+            }
+        });
+    }
+    return pplx::create_task([]{});
+}
 // Temperature end
 
 // Fan start
@@ -283,14 +325,17 @@ json::value Fan::get_json(void)
 // Thermal start
 json::value Thermal::get_json(void)
 {
+    unsigned int i;
     auto j = this->Resource::get_json();
+
     j[U("Id")] = json::value::string(U(this->id));
     j[U("Temperatures")] = json::value::array();
-    for (unsigned int i = 0; i < this->temperatures->members.size(); i++)
+    for (i = 0; i < this->temperatures->members.size(); i++)
         j[U("Temperatures")][i] = ((Temperature *)this->temperatures->members[i])->get_json();
     j[U("Fans")] = json::value::array();
-    for (unsigned int i = 0; i < this->fans->members.size(); i++)
+    for (i = 0; i < this->fans->members.size(); i++)
         j[U("Fans")][i] = ((Fan *)this->fans->members[i])->get_json();
+
     return j;
 }
 // Thermal end
@@ -310,7 +355,18 @@ json::value Chassis::get_json(void)
     j[U("PartNumber")] = json::value::string(U(this->part_number));
     j[U("AssetTag")] = json::value::string(U(this->asset_tag));
     j[U("PowerState")] = json::value::string(U(this->power_state));
-    j[U("IndicatorLED")] = json::value::string(U(this->indicator_led));
+    switch (this->indicator_led)
+    {
+    case LED_OFF:
+        j[U("IndicatorLED")] = json::value::string(U("Off"));
+        break;
+    case LED_BLINKING:
+        j[U("IndicatorLED")] = json::value::string(U("Blinking"));
+        break;
+    case LED_LIT:
+        j[U("IndicatorLED")] = json::value::string(U("Lit"));
+        break;
+    }
     k[U("State")] = json::value::string(U(this->status.state));
     k[U("Health")] = json::value::string(U(this->status.health));
     j[U("Status")] = k;
@@ -335,6 +391,43 @@ json::value Chassis::get_json(void)
     j[U("Thermal")] = this->thermal->get_odata_id_json();
     // j[U("Power")] = this->power->get_odata_id_json();
     return j;
+}
+
+pplx::task<void> Chassis::led_off(uint8_t _led_index)
+{
+    uint8_t *indicator_led = &this->indicator_led;
+    *indicator_led = LED_OFF;
+    log(info) << this->name << ": LED off";
+    return pplx::create_task([indicator_led, _led_index] {
+        GPIO_CLR = 1 << _led_index;
+    });
+}
+
+pplx::task<void> Chassis::led_lit(uint8_t _led_index)
+{
+    uint8_t *indicator_led = &this->indicator_led;
+    *indicator_led = LED_LIT;
+    log(info) << this->name << ": LED lit";
+    return pplx::create_task([indicator_led, _led_index] {
+        GPIO_SET = 1 << _led_index;
+    });
+}
+
+pplx::task<void> Chassis::led_blinking(uint8_t _led_index)
+{
+
+    uint8_t *indicator_led = &this->indicator_led;
+    *indicator_led = LED_BLINKING;
+    log(info) << this->name << ": LED blinking";
+    return pplx::create_task([indicator_led, _led_index] {
+        while (*indicator_led == LED_BLINKING)
+        {
+            GPIO_CLR = 1 << _led_index;
+            usleep(30000);
+            GPIO_SET = 1 << _led_index;
+            usleep(30000);
+        }
+    });
 }
 // Chassis end
 

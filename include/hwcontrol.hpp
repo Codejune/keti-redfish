@@ -1,6 +1,12 @@
 #include "stdafx.hpp"
 #include <sys/mman.h>
 
+#include <linux/i2c-dev.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/ioctl.h>
+#include <fcntl.h>
+
 extern volatile unsigned *gpio;
 
 #define PAGE_SIZE (4 * 1024)
@@ -15,11 +21,18 @@ extern volatile unsigned *gpio;
 #define GPIO_PULL *(gpio + 37)	   // Pull up/pull down
 #define GPIO_PULLCLK0 *(gpio + 38) // Pull up/pull down clock
 
-// #define LED_OFF 0
-// #define LED_LIT 1
-// #define LED_BLINK 2
 #define LED_RED 17
 #define LED_GREEN 22
 #define LED_YELLOW 27
 
+
+#define NUMAX 0x7fffffff
+#define SLAVE 0x08
+#define DEV_I2C "/dev/i2c-1"
+
 bool init_gpio(void);
+bool init_i2c(void);
+double get_intake_humidity(uint8_t _sensor_index);
+bool get_intake_temperature_config(double *_range);
+double get_intake_temperature(uint8_t _sensor_index);
+double get_cpu_temperature(uint8_t _sensor_index);

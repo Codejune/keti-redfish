@@ -2,6 +2,7 @@
 #define RESOURCE_H
 
 #include "stdafx.hpp"
+#include "hwcontrol.hpp"
 
 /**
  * @brief Redfish information
@@ -75,10 +76,9 @@
 /**
  * @brief Redfish chassis resource indicator led state element
  */
-#define LED_BLINKING "Blinking"
-#define LED_LIT "Lit"
-#define LED_OFF "Off"
-#define LED_UNKNOWN "Unknown"
+#define LED_OFF 0
+#define LED_BLINKING 1
+#define LED_LIT 2
 
 /**
  * @brief Redfish chassis resource power state element
@@ -120,7 +120,18 @@ enum RESOURCE_TYPE
 };
 
 /**
+ * @brief Sensor context
+ */
+enum SENSOR_CONTEXT
+{
+    INTAKE_CONTEXT,
+    CPU_CONTEXT
+};
+
+/**
  * @brief Open data protocol information
+ *        @odata.id
+ *        @odata.type
  */
 typedef struct _OData
 {
@@ -202,12 +213,17 @@ public:
 };
 
 /**
- * @brief Global variable of record
+ * @brief Resource map of resource
  */
 extern unordered_map<string, Resource *> g_record;
 
 /**
  * @brief Root of resource
+ *        /redfish/v1/Systems
+ *        /redfish/v1/Chassis
+ *        /redfish/v1/Managers
+ *        /redfish/v1/AccountService/Accounts
+ *        /redfish/v1/SessionService/Sessions
  */
 class Collection : public Resource
 {
@@ -252,6 +268,8 @@ public:
 
 /**
  * @brief List of resource
+ *        /redfish/v1/Chassis/#/Thermal/Temperatures
+ *        /redfish/v1/Chassis/#/Thermal/Fans
  */
 class List : public Resource
 {
@@ -512,16 +530,16 @@ class Temperature : public Resource
 public:
     string member_id;
     Status status;
-    int reading_celsius;
-    int upper_threshold_non_critical;
-    int upper_threshold_critical;
-    int upper_threshold_fatal;
-    int min_reading_range_temp;
-    int max_reading_range_temp;
+    double reading_celsius;
+    double upper_threshold_non_critical;
+    double upper_threshold_critical;
+    double upper_threshold_fatal;
+    double min_reading_range_temp;
+    double max_reading_range_temp;
     string physical_context;
 
     // Class constructor, destructor oveloading
-    Temperature(const string _odata_id) : Resource(THERMAL_TYPE, _odata_id, ODATA_THERMAL_TYPE)
+    Temperature(const string _odata_id) : Resource(TEMPERATURE_TYPE, _odata_id, ODATA_THERMAL_TYPE)
     {
         this->member_id = "";
         this->status.state = STATUS_STATE_ENABLED;
@@ -533,6 +551,8 @@ public:
         this->min_reading_range_temp = 0;
         this->max_reading_range_temp = 0;
         this->physical_context = "";
+        this->thread = false;
+
         g_record[_odata_id] = this;
     }
     Temperature(const string _odata_id, const string _member_id) : Temperature(_odata_id)
@@ -541,11 +561,16 @@ public:
     };
     ~Temperature()
     {
+        this->thread = false;
         g_record.erase(this->odata.id);
     }
 
     json::value get_json(void);
     bool load_json(void);
+    pplx::task<void> read(uint8_t _sensor_index, uint8_t _sensor_context);
+
+private:
+    bool thread;
 };
 
 /**
@@ -564,7 +589,7 @@ public:
     string physical_context;
 
     // Class constructor, destructor oveloading
-    Fan(const string _odata_id) : Resource(THERMAL_TYPE, _odata_id, ODATA_THERMAL_TYPE)
+    Fan(const string _odata_id) : Resource(FAN_TYPE, _odata_id)
     {
         this->member_id = "";
         this->status.state = STATUS_STATE_ENABLED;
@@ -575,6 +600,7 @@ public:
         this->min_reading_range = 0;
         this->max_reading_range = 0;
         this->physical_context = "";
+
         g_record[_odata_id] = this;
     }
     Fan(const string _odata_id, const string _member_id) : Fan(_odata_id)
@@ -602,11 +628,18 @@ public:
     List *fans;
 
     // Class constructor, destructor oveloading
-    Thermal(const string _odata_id) : Resource(THERMAL_TYPE, _odata_id, ODATA_THERMAL_TYPE)
+    Thermal(const string _odata_id) : Resource(THERMAL_TYPE, _odata_id)
     {
         this->id = "Thermal";
+
+        // Temperatures configuration
         this->temperatures = new List(this->odata.id + "/Temperatures", TEMPERATURE_TYPE);
+        this->temperatures->name = "Temperatures";
+
+        // Fans configuration
         this->fans = new List(this->odata.id + "/Fans", FAN_TYPE);
+        this->fans->name = "Fans";
+
         g_record[_odata_id] = this;
     };
     ~Thermal()
@@ -633,7 +666,7 @@ public:
     string part_number;
     string asset_tag;
     string power_state;
-    string indicator_led;
+    uint8_t indicator_led;
     Status status;
     Location location;
 
@@ -669,22 +702,29 @@ public:
         this->location.placement.rack_offset_units = "";
         this->location.placement.rack_offset = 0;
 
+        // Thermal configuration
         this->thermal = new Thermal(this->odata.id + "/Thermal");
-
+        this->thermal->name = "EdgeServer Chassis Thermal";
         ((Collection *)g_record[ODATA_CHASSIS_ID])->add_member(this);
+
         g_record[_odata_id] = this;
     };
     ~Chassis()
     {
         g_record.erase(this->odata.id);
     };
+
     json::value get_json(void);
     bool load_json(void);
+    pplx::task<void> led_off(uint8_t _led_index);
+    pplx::task<void> led_lit(uint8_t _led_index);
+    pplx::task<void> led_blinking(uint8_t _led_index);
 };
 
 /**
  * @brief Root of redfish
  *        This resource create only once
+ *        /redfish/v1
  */
 class ServiceRoot : public Resource
 {
@@ -710,8 +750,11 @@ public:
         this->redfish_version = "1.0.0";
         this->uuid = "";
 
+        // System configuration
         system_collection = new Collection(ODATA_SYSTEM_ID, ODATA_SYSTEM_COLLECTION_TYPE);
         system_collection->name = "Computer System Collection";
+        
+        // Chassis configration
         chassis_collection = new Collection(ODATA_CHASSIS_ID, ODATA_CHASSIS_COLLECTION_TYPE);
         chassis_collection->name = "Chassis Collection";
         odata_id = ODATA_CHASSIS_ID;
@@ -720,11 +763,58 @@ public:
         chassis->name = "EdgeServer Enclosure";
         chassis->chassis_type = "Enclosure";
         chassis->manufacturer = "KETI";
+        chassis->indicator_led = LED_OFF;
+        chassis->led_off(LED_YELLOW);
+        chassis->led_off(LED_RED);
+        chassis->led_blinking(LED_GREEN);
 
+        double temp[2] = {0};
+        if (get_intake_temperature_config(temp)) {
+            log(info) << "Chassis temperature min value = " << temp[0];
+            log(info) << "Chassis temperature max value = " << temp[1];
+        }
+
+
+        for (uint8_t i = 0; i < 4; i++)
+        {
+            ostringstream s;
+            s << chassis->thermal->temperatures->odata.id << "/" << to_string(i);
+            Temperature *intake_temperature = new Temperature(s.str(), to_string(i));
+            intake_temperature->name = "Chassis Intake Temperature";
+            intake_temperature->physical_context = "Intake";
+            intake_temperature->min_reading_range_temp = temp[0];
+            intake_temperature->max_reading_range_temp = temp[1];
+            intake_temperature->upper_threshold_non_critical = round(temp[1] * 0.6);
+            intake_temperature->upper_threshold_critical = round(temp[1] * 0.7);
+            intake_temperature->upper_threshold_fatal = round(temp[1] * 0.85);
+            intake_temperature->read(i, INTAKE_CONTEXT);
+            chassis->thermal->temperatures->add_member(intake_temperature);
+        }
+
+        ostringstream s;
+        s << chassis->thermal->temperatures->odata.id << "/" << to_string(chassis->thermal->temperatures->members.size());
+        Temperature *cpu_temperature = new Temperature(s.str(), to_string(chassis->thermal->temperatures->members.size()));
+        cpu_temperature->name = "Chassis Manager CPU Temperature";
+        cpu_temperature->physical_context = "CPU";
+        cpu_temperature->min_reading_range_temp = 0;
+        cpu_temperature->max_reading_range_temp = 100;
+        cpu_temperature->upper_threshold_non_critical = round(cpu_temperature->max_reading_range_temp * 0.7);
+        cpu_temperature->upper_threshold_critical = round(cpu_temperature->max_reading_range_temp * 0.75);
+        cpu_temperature->upper_threshold_fatal = round(cpu_temperature->max_reading_range_temp * 0.8);
+        cpu_temperature->read(chassis->thermal->temperatures->members.size(), CPU_CONTEXT);
+        chassis->thermal->temperatures->add_member(cpu_temperature);
+
+
+        // Manager configration
         manager_collection = new Collection(ODATA_MANAGER_ID, ODATA_MANAGER_COLLECTION_TYPE);
         manager_collection->name = "Manager Collection";
+        
+        // AccountService configuration
         account_service = new AccountService();
+
+        // SessionService configuration
         session_service = new SessionService();
+
         g_record[ODATA_SERVICE_ROOT_ID] = this;
     };
     ~ServiceRoot()
@@ -736,6 +826,7 @@ public:
     bool load_json(void);
 };
 
+bool init_resource(void);
 bool is_session_valid(const string _token_id);
 
 #endif

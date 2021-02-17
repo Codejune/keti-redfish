@@ -8,6 +8,7 @@
 #include <vector>
 #include <unordered_map>
 #include <fstream>
+#include <cmath>
 #include <algorithm>
 #include <random>
 #include <functional>

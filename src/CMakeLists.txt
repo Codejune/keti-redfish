@@ -12,7 +12,7 @@ set(
     resource.cpp
     util.cpp
     record.cpp
-    gpio.cpp
+    hwcontrol.cpp
 )
 
 # Directory setting

@@ -1,6 +1,5 @@
 #include "handler.hpp"
 #include "resource.hpp"
-#include "auth.hpp"
 
 extern unordered_map<string, Resource *> g_record;
 unsigned int g_count = 0;
